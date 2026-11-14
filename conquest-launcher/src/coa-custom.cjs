@@ -188,7 +188,7 @@ class CoaCustom {
       await fsp.copyFile(target + '.dist', target);
     }
     const text = await fsp.readFile(target, 'utf8');
-    const line = new RegExp(`^\\s*${key.replace(/\./g, '\\.')}\\s*=.*$`, 'm');
+    const line = new RegExp(`^[ \\t]*${key.replace(/\./g, '\\.')}[ \\t]*=.*$`, 'm');
     await fsp.writeFile(target, line.test(text) ? text.replace(line, `${key} = ${value}`) : `${text.trimEnd()}\n${key} = ${value}\n`);
   }
 
