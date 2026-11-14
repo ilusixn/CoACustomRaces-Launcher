@@ -827,7 +827,9 @@ launcherI18n.register("fr", "Français", {
   "GPLv3 with author-attribution terms. This software comes with no warranty. Third-party assets retain their own rights.": "GPLv3 avec des conditions d’attribution. Ce logiciel est fourni sans garantie. Les ressources tierces conservent leurs propres droits.",
   "License & attribution": "Licence et attribution",
   "Source code": "Code source",
-  "Open the installed desktop launcher to read the bundled license files.": "Ouvrez le lanceur installé pour lire les fichiers de licence inclus."
+  "Open the installed desktop launcher to read the bundled license files.": "Ouvrez le lanceur installé pour lire les fichiers de licence inclus.",
+  "Buy me a coffee": "Offrez-moi un café",
+  "Support ilusixn and CoA Custom Races": "Soutenez ilusixn et CoA Custom Races"
 }, true);
 launcherI18n.register("es-ES", "Español", {
   "Clear cache before launching": "Borrar caché antes de iniciar",
@@ -1657,7 +1659,9 @@ launcherI18n.register("es-ES", "Español", {
   "GPLv3 with author-attribution terms. This software comes with no warranty. Third-party assets retain their own rights.": "GPLv3 con condiciones de atribución de autoría. Este software se ofrece sin garantía. Los recursos de terceros conservan sus derechos.",
   "License & attribution": "Licencia y atribución",
   "Source code": "Código fuente",
-  "Open the installed desktop launcher to read the bundled license files.": "Abre el lanzador instalado para leer los archivos de licencia incluidos."
+  "Open the installed desktop launcher to read the bundled license files.": "Abre el lanzador instalado para leer los archivos de licencia incluidos.",
+  "Buy me a coffee": "Invítame a un café",
+  "Support ilusixn and CoA Custom Races": "Apoya a ilusixn y a CoA Custom Races"
 }, true);
 launcherI18n.register("ru", "Русский", {
   "Clear cache before launching": "Очищать кэш перед запуском",
@@ -2487,7 +2491,9 @@ launcherI18n.register("ru", "Русский", {
   "GPLv3 with author-attribution terms. This software comes with no warranty. Third-party assets retain their own rights.": "GPLv3 с условиями указания авторства. Программа предоставляется без гарантий. Права на сторонние ресурсы сохраняются за их владельцами.",
   "License & attribution": "Лицензия и авторство",
   "Source code": "Исходный код",
-  "Open the installed desktop launcher to read the bundled license files.": "Откройте установленный лаунчер, чтобы прочитать включённые файлы лицензии."
+  "Open the installed desktop launcher to read the bundled license files.": "Откройте установленный лаунчер, чтобы прочитать включённые файлы лицензии.",
+  "Buy me a coffee": "Угостите меня кофе",
+  "Support ilusixn and CoA Custom Races": "Поддержите ilusixn и CoA Custom Races"
 }, true);
 launcherI18n.register("zh-CN", "简体中文", {
   "Clear cache before launching": "启动前清除缓存",
@@ -3317,5 +3323,7 @@ launcherI18n.register("zh-CN", "简体中文", {
   "GPLv3 with author-attribution terms. This software comes with no warranty. Third-party assets retain their own rights.": "采用 GPLv3 许可及作者署名条款。本软件不提供任何担保。第三方资源保留其各自权利。",
   "License & attribution": "许可与署名",
   "Source code": "源代码",
-  "Open the installed desktop launcher to read the bundled license files.": "请打开已安装的启动器以阅读随附的许可文件。"
+  "Open the installed desktop launcher to read the bundled license files.": "请打开已安装的启动器以阅读随附的许可文件。",
+  "Buy me a coffee": "请我喝杯咖啡",
+  "Support ilusixn and CoA Custom Races": "支持 ilusixn 和 CoA Custom Races"
 }, true);
