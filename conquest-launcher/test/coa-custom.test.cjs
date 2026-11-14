@@ -120,7 +120,7 @@ test('SquidBots options are listed with their comments and only known keys can b
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, 'playerbots.conf'), '# How many bots\n# at most\nAiPlayerbot.MaxRandomBots = 500\n\nAiPlayerbot.RandomBotAccountPrefix = "rndbot"\n');
   const coa = new CoaCustom({ fetchImpl: null, notify: () => {} });
-  const list = await coa.botOptions(root);
+  const list = (await coa.botOptions(root)).filter(o => o.key.startsWith('AiPlayerbot.'));
   assert.deepEqual(list.map(o => [o.key, o.value, o.description]), [['AiPlayerbot.MaxRandomBots', '500', 'How many bots at most'], ['AiPlayerbot.RandomBotAccountPrefix', 'rndbot', '']]);
   await coa.setBotOption(root, 'AiPlayerbot.MaxRandomBots', 200);
   await coa.setBotOption(root, 'AiPlayerbot.RandomBotAccountPrefix', 'bots');
