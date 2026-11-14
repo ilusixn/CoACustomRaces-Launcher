@@ -42,6 +42,39 @@ test('race list parses single ids and Alliance/Horde pairs', () => {
   assert.deepEqual(rows.map(r => [r.ids, r.name]), [[[20, 29], 'Pandaren'], [[105], 'Gilgoblin']]);
 });
 
+test('backups list newest first, label their reason and keep only the newest 8 automatic ones', async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'coa-bk-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const coa = new CoaCustom({ fetchImpl: null, notify: () => {} });
+  const dir = coa.backupDir(root);
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, 'characters-20260101-100000-manual.sql.gz'), 'x');
+  for (let i = 1; i <= 10; i++) await fs.writeFile(path.join(dir, `characters-2026020${i % 10}-12000${i % 10}-before-update.sql.gz`.replace('02020', '0202')), 'x');
+  await fs.writeFile(path.join(dir, 'notes.txt'), 'ignored');
+  await coa.pruneBackups(dir);
+  const list = await coa.listBackups(root);
+  assert.equal(list.filter(b => b.reason === 'before-update').length, 8);
+  assert.equal(list.filter(b => b.reason === 'manual').length, 1, 'manual backups are never pruned');
+  assert.equal(list.some(b => b.name === 'notes.txt'), false);
+  assert.ok(list[0].name > list[list.length - 1].name, 'newest first');
+  assert.match(list[0].when, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+  await assert.rejects(coa.restore(root, '../../etc/passwd'), /Unknown backup/);
+  await assert.rejects(coa.backupInternal(root, 'bad label!'), /Invalid backup label/);
+});
+
+test('troubleshoot reports a missing client and server instead of throwing', async () => {
+  const coa = new CoaCustom({ fetchImpl: () => Promise.resolve({ ok: false }), notify: () => {} });
+  const missing = path.join(os.tmpdir(), 'coa-does-not-exist-' + Date.now());
+  const checks = await coa.troubleshoot({ serverPath: missing, clientPath: missing, realmlist: '127.0.0.1', realmMode: 'local', modules: { races: true }, versions: {} });
+  const by = name => checks.find(c => c.name === name);
+  assert.equal(by('Game folder').ok, false);
+  assert.equal(by('CoACustomRace.exe').ok, false);
+  assert.equal(by('Server scripts').ok, false);
+  assert.equal(by('GitHub (updates)').ok, false);
+  assert.ok(checks.every(c => ['true', 'false', 'warn'].includes(String(c.ok))));
+  assert.ok(by('CoACustomRace.exe').fix.length > 0, 'every failure says how to fix it');
+});
+
 test('realm addresses accept IPs and host names only', () => {
   for (const ok of ['127.0.0.1', '25.12.34.56', 'my-server.example.org']) assert.equal(hostnameOk(ok), true);
   for (const bad of ['', "1.2.3.4'; DROP", 'a b', 'x'.repeat(300), null]) assert.equal(hostnameOk(bad), false);

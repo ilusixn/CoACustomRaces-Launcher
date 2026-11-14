@@ -203,20 +203,21 @@ class CoaCustom {
   }
 
   // Runs SQL with the server's own mysql.exe; returns tab-separated rows. With `file`, the file is fed on stdin.
-  async sql(root, statement, { schema = '', file = '' } = {}) {
+  async sql(root, statement, { schema = '', file = '', stream = null } = {}) {
     const db = JSON.parse(await fsp.readFile(path.join(root, 'Settings/database.json'), 'utf8'));
     const repack = JSON.parse(await fsp.readFile(path.join(root, 'Settings/repack.json'), 'utf8'));
     const mysql = path.join(root, 'mysql/bin/mysql.exe');
-    const args = ['-h127.0.0.1', `-P${repack.mysqlPort || 3306}`, '-uroot', '-N', '-B', '--default-character-set=utf8mb4', ...(schema ? [schema] : []), ...(file ? [] : ['-e', statement])];
+    const args = ['-h127.0.0.1', `-P${repack.mysqlPort || 3306}`, '-uroot', '-N', '-B', '--default-character-set=utf8mb4', ...(schema ? [schema] : []), ...(file || stream ? [] : ['-e', statement])];
     return new Promise((resolve, reject) => {
       // MYSQL_PWD keeps the password off the process command line.
-      const child = spawn(mysql, args, { windowsHide: true, env: { ...process.env, MYSQL_PWD: db.rootPassword }, stdio: [file ? 'pipe' : 'ignore', 'pipe', 'pipe'] });
+      const child = spawn(mysql, args, { windowsHide: true, env: { ...process.env, MYSQL_PWD: db.rootPassword }, stdio: [file || stream ? 'pipe' : 'ignore', 'pipe', 'pipe'] });
       let out = ''; let err = '';
       child.stdout.on('data', d => { out += d; });
       child.stderr.on('data', d => { err += d; });
       child.on('error', reject);
       child.on('close', code => code === 0 ? resolve(out) : reject(new Error(`Database error: ${err.trim().slice(0, 300)}`)));
       if (file) fs.createReadStream(file).on('error', reject).pipe(child.stdin);
+      if (stream) stream.on('error', reject).pipe(child.stdin);
     });
   }
 
@@ -338,6 +339,8 @@ class CoaCustom {
         const joined = Readable.from((async function* () { for (const f of parts) for await (const chunk of fs.createReadStream(f)) yield chunk; })());
         await pipeline(joined, zlib.createZstdDecompress(), stdin);
       });
+      // Safety net: characters and accounts are saved before anything is replaced. If this fails, nothing is changed.
+      const safety = await this.backupInternal(root, 'before-update').catch(error => { throw new Error(`Update cancelled, the safety backup failed: ${error.message}`); });
       this.emit('server', 'Stopping the server…');
       await this.manage(root, 'stop-all');
       this.emit('server', 'Replacing server files…');
@@ -375,7 +378,7 @@ class CoaCustom {
       } finally { await this.manage(root, 'stop-all').catch(() => {}); }
       await fsp.rm(work, { recursive: true, force: true });
       this.emit('ready', `Server updated to ${release.tag_name}.`);
-      return { version: release.tag_name, applied };
+      return { version: release.tag_name, applied, backup: safety.name };
     });
   }
 
@@ -384,6 +387,166 @@ class CoaCustom {
     const response = await this.fetch(this.asset(release, 'manifest.json').browser_download_url);
     if (!response.ok) throw new Error(`Could not read the ${tag} database update list.`);
     return new Set((await response.json()).migrations.map(m => `${m.db}/${m.id}`));
+  }
+
+  // ---------- character backups ----------
+
+  backupDir(root) { return path.join(root, 'Backups', 'launcher'); }
+
+  async dbReady(root) { return this.sql(root, 'SELECT 1;').then(() => true, () => false); }
+
+  // Runs `action` with the database up. If it was down, starts it and stops it again afterwards.
+  async withDatabase(root, action) {
+    if (await this.dbReady(root)) return action();
+    this.emit('server', 'Starting the database…');
+    await this.manage(root, 'start-mysql');
+    try { return await action(); } finally { await this.manage(root, 'stop-all').catch(() => {}); }
+  }
+
+  // Dumps every character, account and guild (acore_characters + acore_auth) to a gzip file. Safe while the server runs.
+  async backupInternal(root, reason = 'manual') {
+    if (!/^[a-z-]{1,24}$/.test(reason)) throw new Error('Invalid backup label.');
+    return this.withDatabase(root, async () => {
+      const db = JSON.parse(await fsp.readFile(path.join(root, 'Settings/database.json'), 'utf8'));
+      const repack = JSON.parse(await fsp.readFile(path.join(root, 'Settings/repack.json'), 'utf8'));
+      const dir = this.backupDir(root);
+      await fsp.mkdir(dir, { recursive: true });
+      const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
+      const file = path.join(dir, `characters-${stamp}-${reason}.sql.gz`);
+      this.emit('backup', 'Backing up characters and accounts…');
+      await new Promise((resolve, reject) => {
+        const dump = spawn(path.join(root, 'mysql/bin/mysqldump.exe'), ['-h127.0.0.1', `-P${repack.mysqlPort || 3306}`, '-uroot', '--single-transaction', '--routines', '--default-character-set=utf8mb4', '--databases', 'acore_characters', 'acore_auth'], { windowsHide: true, env: { ...process.env, MYSQL_PWD: db.rootPassword }, stdio: ['ignore', 'pipe', 'pipe'] });
+        let err = '';
+        dump.stderr.on('data', d => { err += d; });
+        dump.on('error', reject);
+        const out = fs.createWriteStream(file);
+        const done = pipeline(dump.stdout, zlib.createGzip(), out);
+        dump.on('close', async code => {
+          try { await done; } catch (error) { return reject(error); }
+          code === 0 ? resolve() : reject(new Error(`The database dump failed: ${err.trim().slice(0, 300)}`));
+        });
+      }).catch(async error => { await fsp.rm(file, { force: true }); throw error; });
+      // A dump that does not end like a complete one (mysqldump writes this last line) is not a backup.
+      const size = (await fsp.stat(file)).size;
+      if (size < 200) { await fsp.rm(file, { force: true }); throw new Error('The backup came out empty. The database may not be set up yet.'); }
+      await this.pruneBackups(dir);
+      this.emit('ready', 'Backup saved.');
+      return { file, name: path.basename(file), size };
+    });
+  }
+
+  backup(root, reason = 'manual') { return this.exclusive(() => this.backupInternal(root, reason)); }
+
+  // shortcut: keeps the newest 8 automatic backups, manual ones are never deleted; make this a setting if players want more.
+  async pruneBackups(dir) {
+    const auto = (await fsp.readdir(dir)).filter(n => /^characters-\d{8}-\d{6}-(before-update|before-restore)\.sql\.gz$/.test(n)).sort().reverse();
+    for (const old of auto.slice(8)) await fsp.rm(path.join(dir, old), { force: true });
+  }
+
+  async listBackups(root) {
+    const dir = this.backupDir(root);
+    const names = (await fsp.readdir(dir).catch(() => [])).filter(n => /^characters-\d{8}-\d{6}-[a-z-]+\.sql\.gz$/.test(n));
+    const list = [];
+    for (const name of names) {
+      const stat = await fsp.stat(path.join(dir, name));
+      const [, date, time, reason] = name.match(/^characters-(\d{8})-(\d{6})-([a-z-]+)\.sql\.gz$/);
+      list.push({ name, size: stat.size, reason, when: `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6)} ${time.slice(0, 2)}:${time.slice(2, 4)}` });
+    }
+    return list.sort((a, b) => b.name.localeCompare(a.name));
+  }
+
+  // Replaces characters and accounts with a backup. The current state is saved first, the server is stopped first.
+  async restore(root, name) {
+    return this.exclusive(async () => {
+      if (!/^characters-\d{8}-\d{6}-[a-z-]+\.sql\.gz$/.test(name)) throw new Error('Unknown backup.');
+      const file = path.join(this.backupDir(root), name);
+      if (!fs.existsSync(file)) throw new Error('That backup no longer exists.');
+      this.emit('backup', 'Stopping the server…');
+      await this.manage(root, 'stop-all').catch(() => {});
+      const safety = await this.backupInternal(root, 'before-restore');
+      return this.withDatabase(root, async () => {
+        this.emit('backup', 'Restoring characters and accounts…');
+        await this.sql(root, '', { stream: fs.createReadStream(file).pipe(zlib.createGunzip()) });
+        this.emit('ready', 'Backup restored.');
+        return { restored: name, safety: safety.name };
+      });
+    });
+  }
+
+  // ---------- troubleshooting ----------
+
+  async portBusy(port) {
+    return new Promise(resolve => {
+      const probe = require('node:net').createConnection({ port, host: '127.0.0.1' });
+      probe.setTimeout(800);
+      probe.on('connect', () => { probe.destroy(); resolve(true); });
+      probe.on('timeout', () => { probe.destroy(); resolve(false); });
+      probe.on('error', () => resolve(false));
+    });
+  }
+
+  // Each check: { group, name, ok, detail, fix }. ok may be true, false or 'warn'.
+  async troubleshoot({ serverPath, clientPath, realmlist, realmMode, modules, versions }) {
+    const out = [];
+    const add = (group, name, ok, detail, fix = '') => out.push({ group, name, ok, detail, fix });
+    const exists = async p => !!(await fsp.stat(p).catch(() => null));
+    const free = async dir => fsp.statfs(dir).then(s => s.bavail * s.bsize).catch(() => null);
+    const gb = n => `${(n / 2 ** 30).toFixed(1)} GB`;
+
+    // client
+    if (!clientPath) add('Client', 'Game folder', false, 'No game folder chosen.', 'Press Locate game, or Download on the Home page.');
+    else {
+      add('Client', 'Game folder', await exists(clientPath), clientPath, 'Choose the folder again with Locate game.');
+      add('Client', 'Ascension.exe', await exists(path.join(clientPath, 'Ascension.exe')), 'The original client program.', 'Press Download / Check now to repair the client.');
+      const exe = await exists(path.join(clientPath, 'CoACustomRace.exe'));
+      add('Client', 'CoACustomRace.exe', exe, exe ? 'The game this launcher starts.' : 'Missing, so Play cannot start.', 'Apply modules and tick CoA Custom Races.');
+      const mpq = ['patch-T.MPQ', 'patch-ZG.MPQ'];
+      const missing = [];
+      for (const f of mpq) if (!(await exists(path.join(clientPath, 'Data', f)))) missing.push(f);
+      add('Client', 'Custom Races files', modules?.races ? !missing.length : 'warn', modules?.races ? (missing.length ? `Missing: ${missing.join(', ')}` : 'Race archives present.') : 'Custom Races is not applied.', 'Apply modules, or Updates > Reinstall for Custom Races.');
+      const dll = await exists(path.join(clientPath, 'EsteriaAppearance.dll'));
+      add('Client', 'EsteriaAppearance.dll', modules?.races ? dll : 'warn', dll ? 'Present (needed by the Esteria races).' : 'Not found. Esteria races such as Mechagnome will look broken.', 'Updates > Reinstall for CoA Custom Races.');
+      let wtf = '';
+      for (const f of ['realmlist.wtf', 'Data/enUS/realmlist.wtf', 'Data/frFR/realmlist.wtf']) wtf ||= await fsp.readFile(path.join(clientPath, f), 'utf8').catch(() => '');
+      const set = (wtf.match(/set realmlist\s+(\S+)/i) || [])[1];
+      add('Client', 'Realmlist', !set ? 'warn' : set === realmlist, set ? `Game points to ${set}; launcher is set to ${realmlist} (${realmMode}).` : 'Not written yet; the launcher writes it when you press Play.', 'It is rewritten every time you press Play.');
+      const space = await free(clientPath);
+      if (space !== null) add('Client', 'Free disk space', space > 5 * 2 ** 30 ? true : 'warn', `${gb(space)} free on the game drive.`, 'Free some space before updating.');
+    }
+
+    // server
+    if (!serverPath) add('Server', 'Server folder', 'warn', 'No server yet (fine if you only join a friend).', 'Create server or Locate on the Home page.');
+    else {
+      const parts = [['Scripts/manage.py', 'Server scripts'], ['Runtime/python/python.exe', 'Bundled Python'], ['Core/worldserver.exe', 'worldserver.exe'], ['Core/authserver.exe', 'authserver.exe'], ['mysql/bin/mysqld.exe', 'Database program'], ['Settings/database.json', 'Database login']];
+      for (const [rel, label] of parts) add('Server', label, await exists(path.join(serverPath, rel)), rel, 'Repair by updating the server (Updates page) or recreating it.');
+      const conf = async f => (await exists(path.join(serverPath, 'Core/configs/modules', f)));
+      add('Server', 'Module settings', (await conf('playerbots.conf')) && (await conf('coa_custom_races.conf')), 'playerbots.conf and coa_custom_races.conf', 'Apply modules recreates them.');
+      const space = await free(serverPath);
+      if (space !== null) add('Server', 'Free disk space', space > 3 * 2 ** 30 ? true : 'warn', `${gb(space)} free on the server drive.`, 'Free some space before updating.');
+      let ports = { mysqlPort: 3306, authPort: 3724, worldPort: 8085 };
+      try { ports = { ...ports, ...JSON.parse(await fsp.readFile(path.join(serverPath, 'Settings/repack.json'), 'utf8')) }; } catch { /* checked above */ }
+      const up = await this.dbReady(serverPath);
+      add('Server', 'Database', up ? true : 'warn', up ? `Running on port ${ports.mysqlPort}.` : 'Not running (starts with the server).', 'Press Start.');
+      if (up) {
+        const rows = await this.sql(serverPath, "SELECT address FROM acore_auth.realmlist WHERE id=1;").catch(() => null);
+        const addr = rows ? rows.trim() : null;
+        add('Server', 'Realm address', addr === null ? 'warn' : addr === realmlist, addr === null ? 'Could not read the realm list.' : `Server hands out ${addr}; launcher is set to ${realmlist}.`, 'Realmlist > Save fixes it.');
+        const chars = await this.sql(serverPath, 'SELECT COUNT(*) FROM acore_characters.characters;').catch(() => null);
+        if (chars !== null) add('Server', 'Characters', true, `${chars.trim()} characters in the database.`);
+      }
+      for (const [port, label] of [[ports.authPort, 'Login port'], [ports.worldPort, 'World port']]) add('Server', label, 'warn', (await this.portBusy(port)) ? `${port} is in use (the server is running, or another program holds it).` : `${port} is free (server stopped).`, 'If Start fails, close the program using this port.');
+    }
+
+    // backups + network
+    if (serverPath) {
+      const list = await this.listBackups(serverPath);
+      add('Safety', 'Character backup', list.length ? true : 'warn', list.length ? `Latest: ${list[0].when} (${list.length} saved).` : 'No backup yet.', 'Press Back up now. Updates make one automatically.');
+    }
+    const github = await this.fetch('https://api.github.com/rate_limit').then(r => r.ok, () => false);
+    add('Network', 'GitHub (updates)', github, github ? 'Reachable.' : 'Cannot reach GitHub; updates and downloads will fail.', 'Check your internet connection or firewall.');
+    const coaService = await this.fetch('https://launcher-api.coa-development.org/downloads/client/latest.json').then(r => r.ok, () => false);
+    add('Network', 'CoA client service', coaService, coaService ? 'Reachable.' : 'Cannot reach the client download service.', 'Check your internet connection; try again later.');
+    return out;
   }
 
   // ---------- races and bots ----------

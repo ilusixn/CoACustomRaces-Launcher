@@ -672,6 +672,20 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     await persist({ ...settings, customOwned: result.owned || settings.customOwned, versions: { ...settings.versions, ...result.versions } });
     return result;
   });
+  // ---- backups and troubleshooting ----
+  handle('coa:backups', async () => coa.listBackups(await requireServer()));
+  handle('coa:backup', async () => coa.backup(await requireServer(), 'manual'));
+  handle('coa:restore', async name => coa.restore(await requireServer(), String(name)));
+  handle('coa:open-backups', async () => {
+    const dir = coa.backupDir(await requireServer());
+    await fs.mkdir(dir, { recursive: true });
+    const result = await shell.openPath(dir);
+    if (result) throw new Error(result);
+  });
+  handle('coa:troubleshoot', async () => {
+    const info = await clientInfo();
+    return coa.troubleshoot({ serverPath: settings.serverPath, clientPath: info.path || '', realmlist: settings.realmlist, realmMode: settings.realmMode, modules: settings.modules, versions: settings.versions });
+  });
   // ---- races and bot races ----
   handle('coa:races', () => coa.races());
   handle('coa:bot-races', async () => coa.botRaces(await requireServer()));

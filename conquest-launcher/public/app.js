@@ -349,7 +349,7 @@ function coaPanelHtml() {
   const s = state.settings;
   const server = s.serverPath ? lh`<span class="coa-path" title="${escape(s.serverPath)}">${escape(s.serverPath)}</span>` : lh`<span class="coa-path">${t('No server yet')}</span>`;
   const mods = ['squid', 'devMenu', 'races'].filter(k => s.modules?.[k]).map(k => ({ squid: 'SquidBots', devMenu: 'Dev Menu', races: 'Custom Races V2' })[k]).join(' · ') || t('No modules');
-  return lh`<div class="coa-panel"><div class="coa-row"><span class="coa-title">${icon('database')}Server</span>${server}</div><div class="coa-buttons">${s.serverPath ? lh`<button class="secondary-button" data-action="coa-start">${icon('play')}Start</button><button class="secondary-button" data-action="coa-stop">Stop</button>` : lh`<button class="gold-button" data-action="coa-create">${icon('download')}Create server</button><button class="secondary-button" data-action="coa-locate">${icon('folder')}Locate</button>`}</div><div class="coa-row"><span class="coa-title">${icon('addons')}Modules</span><span class="coa-path">${escape(mods)}</span></div><div class="coa-buttons"><button class="gold-button" data-action="coa-modules">Apply modules</button><button class="secondary-button" data-action="coa-realm">${icon('globe')}Realmlist: ${escape(realmLabels[s.realmMode] || 'Local')}</button></div><div id="coa-status" class="coa-status" role="status">${escape(state.coaStatus || '')}</div></div>`;
+  return lh`<div class="coa-panel"><div class="coa-row"><span class="coa-title">${icon('database')}Server</span>${server}</div><div class="coa-buttons">${s.serverPath ? lh`<button class="secondary-button" data-action="coa-start">${icon('play')}Start</button><button class="secondary-button" data-action="coa-stop">Stop</button>` : lh`<button class="gold-button" data-action="coa-create">${icon('download')}Create server</button><button class="secondary-button" data-action="coa-locate">${icon('folder')}Locate</button>`}</div><div class="coa-row"><span class="coa-title">${icon('addons')}Modules</span><span class="coa-path">${escape(mods)}</span></div><div class="coa-buttons"><button class="gold-button" data-action="coa-modules">Apply modules</button><button class="secondary-button" data-action="coa-backups">${icon('shield')}Backups</button><button class="secondary-button" data-action="coa-trouble">${icon('info')}Troubleshoot</button><button class="secondary-button" data-action="coa-realm">${icon('globe')}Realmlist: ${escape(realmLabels[s.realmMode] || 'Local')}</button></div><div id="coa-status" class="coa-status" role="status">${escape(state.coaStatus || '')}</div></div>`;
 }
 function showModules() {
   const m = state.settings.modules || {};
@@ -362,6 +362,27 @@ async function showRealm() {
   const option = (mode, title, text, value) => lh`<label class="realm-option"><input type="radio" name="realm-mode" value="${mode}" data-address="${escape(value || '')}" ${s.realmMode === mode ? 'checked' : ''}><span><span class="setting-title">${title}</span><span class="setting-description">${text}</span></span></label>`;
   const lan = net.lan[0] || ''; const ham = net.hamachi[0] || '';
   openModal(lh`${modalHeader(t('Realmlist'), t('How players reach your server'))}<div class="modal-body">${option('local', 'Local', 'Only this PC plays (127.0.0.1).', '127.0.0.1')}${option('lan', 'LAN play', lan ? `Players on your home network join ${lan}.` : 'No LAN address found on this PC.', lan)}${option('hamachi', 'LogMeIn Hamachi', ham ? `Friends in your Hamachi network join ${ham}.` : 'Hamachi is not running. Install and join a network first.', ham)}${option('custom', 'Join a friend', 'Play on someone else\'s server: enter their LAN or Hamachi IP.', s.realmMode === 'custom' ? s.realmlist : '')}<label class="form-label" for="realm-address">${t('Address')}</label><input type="text" id="realm-address" value="${escape(s.realmlist || '127.0.0.1')}" spellcheck="false"><div class="info-box">${icon('info')}<span>${t('Hosting? Friends set "Join a friend" with your address. Allow worldserver and authserver through Windows Firewall (ports 3724 and 8085).')} <button class="link-button" data-action="coa-link" data-link="hamachi">LogMeIn Hamachi</button></span></div></div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button" data-action="coa-realm-save">${t('Save')}</button></div>`);
+}
+function formatSize(bytes) { return bytes > 2 ** 30 ? (bytes / 2 ** 30).toFixed(2) + ' GB' : (bytes / 2 ** 20).toFixed(1) + ' MB'; }
+const backupReasons = { manual: 'Manual', 'before-update': 'Before a server update', 'before-restore': 'Before a restore' };
+async function showBackups(notice = '') {
+  if (!state.settings.serverPath) { toast(t('Create or locate your server first.')); return; }
+  let list = [];
+  try { list = await api.coaBackups(); } catch (error) { toast(tm(error.message)); return; }
+  const rows = list.length ? list.map(b => lh`<div class="backup-row"><span><strong>${escape(b.when)}</strong><small>${escape(t(backupReasons[b.reason] || b.reason))} · ${escape(formatSize(b.size))}</small></span><button class="secondary-button" data-action="coa-restore-ask" data-name="${escape(b.name)}">${t('Restore')}</button></div>`).join('') : lh`<div class="backup-empty">${t('No backups yet.')}</div>`;
+  openModal(lh`${modalHeader(t('Character backups'), t('Characters, accounts and guilds. Saved automatically before every server update.'))}<div class="modal-body"><p class="backup-notice" id="backup-notice">${escape(notice)}</p><div class="backup-list">${rows}</div><div class="info-box">${icon('info')}<span>${t('Restoring replaces every character and account with the backup. Your current state is saved first, and the server is stopped.')}</span></div></div><div class="modal-footer"><button class="secondary-button" data-action="coa-backup-folder">${t('Open folder')}</button><button class="gold-button" data-action="coa-backup-now">${t('Back up now')}</button></div>`, 'backup-dialog');
+}
+async function showTroubleshoot() {
+  openModal(lh`${modalHeader(t('Troubleshoot'), t('Checking your client, server, database and network…'))}<div class="modal-body"><p class="backup-notice">${t('Running checks, this takes a few seconds.')}</p></div>`, 'backup-dialog');
+  let checks;
+  try { checks = await api.coaTroubleshoot(); } catch (error) { closeModal(); toast(tm(error.message)); return; }
+  const bad = checks.filter(c => c.ok === false).length; const warn = checks.filter(c => c.ok === 'warn').length;
+  const mark = c => c.ok === true ? '✔' : c.ok === 'warn' ? '!' : '✖';
+  const cls = c => c.ok === true ? 'ok' : c.ok === 'warn' ? 'warn' : 'fail';
+  const groups = [...new Set(checks.map(c => c.group))];
+  const body = groups.map(g => lh`<h4 class="check-group">${escape(g)}</h4>${checks.filter(c => c.group === g).map(c => lh`<div class="check-row ${cls(c)}"><span class="check-mark">${mark(c)}</span><span><strong>${escape(c.name)}</strong><small>${escape(c.detail)}</small>${c.ok !== true && c.fix ? lh`<small class="check-fix">${t('Fix')}: ${escape(c.fix)}</small>` : ''}</span></div>`).join('')}`).join('');
+  const summary = bad ? lt`${bad} problem(s) found` : warn ? lt`No problems, ${warn} note(s)` : t('Everything looks fine');
+  openModal(lh`${modalHeader(t('Troubleshoot'), summary)}<div class="modal-body check-list">${body}</div><div class="modal-footer"><button class="secondary-button" data-action="coa-trouble">${t('Run again')}</button><button class="gold-button" data-action="dismiss-modal">${t('Done')}</button></div>`, 'backup-dialog');
 }
 async function coaRun(label, action) {
   state.coaBusy = true; state.coaStatus = label; render();
@@ -991,6 +1012,23 @@ const actions = {
   'submit-bug': submitBugForm,
   'open-issue': element => api.openIssue(Number(element.dataset.issueOpen)),
   'coa-coffee': () => api.coaOpen('coffee'),
+  'coa-backups': () => showBackups(),
+  'coa-trouble': showTroubleshoot,
+  'coa-backup-folder': () => api.coaOpenBackups(),
+  'coa-backup-now': async button => {
+    button.disabled = true; document.getElementById('backup-notice').textContent = t('Backing up… do not close the launcher.');
+    try { const made = await api.coaBackup(); await showBackups(lt`Saved ${made.name} (${formatSize(made.size)}).`); }
+    catch (error) { document.getElementById('backup-notice').textContent = tm(error.message); button.disabled = false; }
+  },
+  'coa-restore-ask': element => {
+    const name = element.dataset.name;
+    openModal(lh`${modalHeader(t('Restore this backup?'), name)}<div class="modal-body"><p>${t('Every character and account will be replaced by this backup. Anything created since then is lost, but your current state is saved first so you can undo this.')}</p></div><div class="modal-footer"><button class="secondary-button" data-action="coa-backups">${t('Cancel')}</button><button class="gold-button" data-action="coa-restore-go" data-name="${escape(name)}">${t('Restore')}</button></div>`, 'backup-dialog');
+  },
+  'coa-restore-go': async button => {
+    const name = button.dataset.name; button.disabled = true;
+    try { const done = await api.coaRestore(name); closeModal(); state.coaStatus = lt`Restored ${done.restored}. Previous state saved as ${done.safety}.`; render(); toast(t('Backup restored. Start the server.')); }
+    catch (error) { closeModal(); toast(tm(error.message)); }
+  },
   'coa-refresh-updates': () => { state.coaUpdates = null; render(); },
   'coa-check-client': () => actions['check-updates'](),
   'coa-update': element => coaRun(lt`Updating ${moduleNames[element.dataset.key]}…`, async () => {
