@@ -16,7 +16,7 @@ function applyLanguage(code) {
   launcherI18n.setLanguage(code);
   refreshLanguageShell();
   render();
-  document.getElementById('connection-status').textContent = state.account ? lt`Signed in: ${state.account.username}` : state.accountServiceAvailable === true ? t('Account service connected') : state.accountServiceAvailable === false ? t('Account service unavailable') : t('Connecting...');
+  document.getElementById('connection-status').textContent = t('Local server mode');
   if (modal.open) {
     if (modal.classList.contains('language-dialog')) showLanguage();
     else if (modal.classList.contains('settings-dialog')) showSettings();

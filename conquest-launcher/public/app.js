@@ -341,7 +341,7 @@ function changelogHtml() {
 }
 function homePage() {
   const installed = state.client.installed;
-  return lh`<div class="home-page"><section class="hero-grid"><div class="hero-copy"><div class="eyebrow">Your world. Your adventure.</div><h1>CoA Custom<br>Races</h1><p class="hero-description">Return to the world that started it all.<br>Begin your next chapter in Azeroth.</p><div class="client-controls"><div class="client-label"><span>CoA Custom Races</span><span>${installed ? t('Client selected') : 'World of Warcraft'}</span></div><div class="play-row"><button class="play-button" data-action="play">${icon(installed ? 'play' : 'download')}<span class="play-text"><span class="play-title">${state.client.running ? t('Playing') : installed ? t('Play') : t('Download')}</span><span class="play-subtitle">${state.client.running ? t('Your adventure is underway') : installed ? t('Enter Azeroth') : t('Begin your adventure')}</span></span></button><button class="play-options" data-action="play-options" aria-label="Game options">⌄</button></div><label class="hd-patches-option"><input type="checkbox" data-setting="hdPatches" ${state.settings.hdPatches !== false ? 'checked' : ''}><span>${t('Enable HD patches')}</span></label><span class="hd-patches-hint">${t('Applies on your next launch.')}</span><button class="locate-client" data-action="choose-client">${icon('folder')}${installed ? launcherI18n.html('<span>Change game location</span>') : launcherI18n.html('Already installed? <span>Locate game</span>')}</button>${coaPanelHtml()}</div></div><aside class="hero-side"><button class="coffee-card" data-action="coa-coffee"><span class="coffee-cup">☕</span><span><strong>Buy me a coffee</strong><small>Support ilusixn and CoA Custom Races</small></span>${icon('external')}</button><fieldset class="trailer-panel"><legend>A world of adventure</legend><button class="trailer-button" data-action="trailer" aria-label="Watch the trailer"><img src="assets/trailer.jpg" alt="A dragon above a burning Azeroth landscape"><span class="trailer-play"><span>${icon('play')}</span></span><span class="trailer-caption">YOUR NEXT CHAPTER AWAITS</span></button></fieldset><button class="discord-card" data-action="discord"><span class="discord-crest discord-crest-image"><img src="assets/coa-custom-emblem.png" alt=""></span><span class="discord-name">Conquest<span><small>Join our community</small></span></span><span class="discord-link">${icon('discord')} DISCORD ${icon('external')}</span></button></aside></section><section class="news-section"><div class="section-heading"><h2>Latest news</h2><span class="heading-rule"></span><button data-page="news">View all news ${icon('arrow')}</button></div><div class="news-grid">${articles.map(newsCard).join('')}</div></section></div>`;
+  return lh`<div class="home-page"><section class="hero-grid"><div class="hero-copy"><div class="eyebrow">Your world. Your adventure.</div><h1>CoA Custom<br>Races</h1><p class="hero-description">Return to the world that started it all.<br>Begin your next chapter in Azeroth.</p><div class="client-controls"><div class="client-label"><span>CoA Custom Races</span><span>${installed ? t('Client selected') : 'World of Warcraft'}</span></div><div class="play-row"><button class="play-button" data-action="play">${icon(installed ? 'play' : 'download')}<span class="play-text"><span class="play-title">${state.client.running ? t('Playing') : installed ? t('Play') : t('Download')}</span><span class="play-subtitle">${state.client.running ? t('Your adventure is underway') : installed ? t('Enter Azeroth') : t('Begin your adventure')}</span></span></button><button class="play-options" data-action="play-options" aria-label="Game options">⌄</button></div><label class="hd-patches-option"><input type="checkbox" data-setting="hdPatches" ${state.settings.hdPatches !== false ? 'checked' : ''}><span>${t('Enable HD patches')}</span></label><span class="hd-patches-hint">${t('Applies on your next launch.')}</span><button class="locate-client" data-action="choose-client">${icon('folder')}${installed ? launcherI18n.html('<span>Change game location</span>') : launcherI18n.html('Already installed? <span>Locate game</span>')}</button>${coaPanelHtml()}</div></div><aside class="hero-side"><button class="coffee-card" data-action="coa-coffee"><span class="coffee-cup">☕</span><span><strong>Buy me a coffee</strong><small>Support ilusixn and CoA Custom Races</small></span>${icon('external')}</button><fieldset class="trailer-panel"><legend>A world of adventure</legend><button class="trailer-button" data-action="trailer" aria-label="Watch the trailer"><img src="assets/trailer.jpg" alt="A dragon above a burning Azeroth landscape"><span class="trailer-play"><span>${icon('play')}</span></span><span class="trailer-caption">YOUR NEXT CHAPTER AWAITS</span></button></fieldset><button class="discord-card" data-action="coa-link" data-link="races"><span class="discord-crest discord-crest-image"><img src="assets/coa-custom-emblem.png" alt=""></span><span class="discord-name">CoA Custom Races<span><small>Releases, races and credits</small></span></span><span class="discord-link">GITHUB ${icon('external')}</span></button></aside></section><section class="news-section"><div class="section-heading"><h2>Latest news</h2><span class="heading-rule"></span><button data-page="news">View all news ${icon('arrow')}</button></div><div class="news-grid">${articles.map(newsCard).join('')}</div></section></div>`;
 }
 // ---- CoA Custom Races: server, modules, realmlist ----
 const realmLabels = { local: 'Local (this PC)', lan: 'LAN', hamachi: 'LogMeIn Hamachi', custom: 'Join a friend' };
@@ -366,6 +366,52 @@ async function showRealm() {
 async function coaRun(label, action) {
   state.coaBusy = true; state.coaStatus = label; render();
   try { return await action(); } finally { state.coaBusy = false; }
+}
+// ---- CoA Custom Races pages: Updates, Races, Bots ----
+const moduleNames = { server: 'CoA server', squid: 'SquidBots addon', devMenu: 'ilusixn Dev Menu', races: 'CoA Custom Races' };
+const moduleRepos = { server: 'Corfirean/coa-server-build', squid: 'Zyth45/squidbots-addon', devMenu: 'ilusixn/ilusixn-dev-menu', races: 'ilusixn/CustomRacesCoa' };
+function raceIdsText(race) { return race.ids.join(' / '); }
+function updatesPage() {
+  const u = state.coaUpdates;
+  const row = key => {
+    const installed = u?.installed?.[key] || ''; const latest = u?.latest?.[key] || '';
+    const active = key === 'server' ? !!u?.server : key === 'squid' ? u?.modules?.squid : u?.modules?.[key];
+    const status = !u ? t('Checking…') : !active ? t('Not installed') : !latest ? t('Unavailable') : installed === latest ? t('Up to date') : installed ? t('Update available') : t('Version unknown');
+    const canUpdate = u && active && latest && installed !== latest;
+    return lh`<div class="update-row"><div><strong>${escape(moduleNames[key])}</strong><small>${escape(moduleRepos[key])}</small></div><span>${escape(installed || '—')}</span><span>${escape(latest || '—')}</span><span class="update-status ${canUpdate ? 'pending' : ''}">${status}</span><button class="${canUpdate ? 'gold-button' : 'secondary-button'}" data-action="coa-update" data-key="${key}" ${active ? '' : 'disabled'}>${canUpdate ? t('Update') : t('Reinstall')}</button></div>`;
+  };
+  return lh`<div class="content-page">${titleBlock(t('Updates'), t('Your server, client and modules, straight from their GitHub releases.'), 'CONNECTED TO GITHUB')}<div class="update-table"><div class="update-row update-head"><span>${t('Part')}</span><span>${t('Installed')}</span><span>${t('Latest')}</span><span>${t('Status')}</span><span></span></div>${row('server')}<div class="update-row"><div><strong>${t('Game client')}</strong><small>Conquest of AzerothCore client service</small></div><span>—</span><span>—</span><span class="update-status">${t('Checked on every launch')}</span><button class="secondary-button" data-action="coa-check-client">${t('Check now')}</button></div>${row('races')}${row('squid')}${row('devMenu')}</div><div class="info-box">${icon('info')}<span>${t('Updating the server stops it, replaces its program files, keeps your characters and settings, and applies the new database updates once. SquidBots itself is part of the server, so a server update also updates the bots.')}</span></div><div class="button-row"><button class="secondary-button" data-action="coa-refresh-updates">${icon('refresh')}${t('Check again')}</button></div><div id="coa-status" class="coa-status" role="status">${escape(state.coaStatus || '')}</div></div>`;
+}
+async function loadUpdates() {
+  try { state.coaUpdates = await api.coaUpdates(); } catch (error) { state.coaUpdates = { failed: true }; toast(tm(error.message)); }
+  if (state.page === 'updates') render();
+}
+function racesPage() {
+  const query = (state.raceQuery || '').toLowerCase();
+  const races = (state.coaRaces || []).filter(r => !query || `${r.name} ${r.side} ${r.credit} ${raceIdsText(r)}`.toLowerCase().includes(query));
+  const body = !state.coaRaces ? lh`<p class="page-description">${t('Loading the race list…')}</p>` : lh`<div class="race-table"><div class="race-row race-head"><span>Id</span><span>${t('Race')}</span><span>${t('Side')}</span><span>${t('Credit')}</span></div>${races.map(r => lh`<div class="race-row"><span class="race-id">${escape(raceIdsText(r))}</span><span><strong>${escape(r.name)}</strong>${r.notes ? lh`<small>${escape(r.notes)}</small>` : ''}</span><span>${escape(r.side)}</span><span>${escape(r.credit)}</span></div>`).join('')}</div>`;
+  return lh`<div class="content-page">${titleBlock(t('Playable races'), lt`${state.coaRaces ? state.coaRaces.length : '…'} races with their ChrRaces ids. Pairs like 68/69 are the Alliance/Horde twins.`, 'COA CUSTOM RACES')}<div class="filter-bar"><label class="search-box">${icon('search')}<input id="race-search" type="text" placeholder="${t('Search races, ids or credits')}" value="${escape(state.raceQuery || '')}"></label></div><div id="race-results">${body}</div></div>`;
+}
+async function loadRaces() {
+  if (state.coaRaces) return;
+  try { state.coaRaces = await api.coaRaces(); } catch (error) { toast(tm(error.message)); state.coaRaces = []; }
+  if (['races', 'bots'].includes(state.page)) render();
+}
+function botsPage() {
+  if (!state.settings.serverPath) return lh`<div class="content-page">${titleBlock(t('Bot races'), t('Choose which races SquidBots spawn as.'))}<div class="empty-panel"><h2>${t('No server yet')}</h2><p>${t('Create or locate your server on the Home page first.')}</p></div></div>`;
+  const bots = state.coaBotRaces;
+  const excluded = new Set(bots?.excluded || []); const crashing = new Set(bots?.crashing || []);
+  const cards = (state.coaRaces || []).map(r => {
+    const blocked = r.ids.every(id => crashing.has(id));
+    const on = !blocked && r.ids.some(id => !excluded.has(id));
+    return lh`<label class="bot-race ${blocked ? 'blocked' : ''}"><input type="checkbox" data-bot-race="${r.ids.join(',')}" ${on ? 'checked' : ''} ${blocked ? 'disabled' : ''}><span><strong>${escape(r.name)}</strong><small>${escape(raceIdsText(r))} · ${escape(r.side)}${blocked ? ' · ' + t('crashes bots, always off') : ''}</small></span></label>`;
+  }).join('');
+  return lh`<div class="content-page">${titleBlock(t('Bot races'), t('Checked races are the ones SquidBots spawn as. Saved to your server; new bots use it after a server restart.'), state.settings.modules?.squid ? 'SQUIDBOTS ON' : 'SQUIDBOTS OFF')}<div class="button-row"><button class="secondary-button" data-action="coa-bots-all">${t('Select all')}</button><button class="secondary-button" data-action="coa-bots-none">${t('Unselect all')}</button><button class="gold-button" data-action="coa-bots-save">${t('Save')}</button></div>${!bots || !state.coaRaces ? lh`<p class="page-description">${t('Loading…')}</p>` : lh`<div class="bot-grid">${cards}</div>`}</div>`;
+}
+async function loadBotRaces() {
+  await loadRaces();
+  try { state.coaBotRaces = await api.coaBotRaces(); } catch (error) { toast(tm(error.message)); state.coaBotRaces = { excluded: [], crashing: [] }; }
+  if (state.page === 'bots') render();
 }
 function newsPage() {
   return lh`<div class="content-page">${titleBlock(t('News & updates'), t('The latest from your world. Announcements, development, and community stories.'), 'CONQUEST OF AZEROTHCORE')}<div class="tabs" role="tablist" aria-label="News categories"><button role="tab" aria-selected="${state.newsTab === 'latest'}" class="tab ${state.newsTab === 'latest' ? 'active' : ''}" data-news-tab="latest">Latest news</button><button role="tab" aria-selected="${state.newsTab === 'changelog'}" class="tab ${state.newsTab === 'changelog' ? 'active' : ''}" data-news-tab="changelog">Changelog</button></div>${state.newsTab === 'latest' ? lh`<div class="news-page-grid">${articles.map(newsCard).join('')}</div>` : changelogHtml()}</div>`;
@@ -594,6 +640,9 @@ function render() {
   for (const button of document.querySelectorAll('.nav-link[data-page]')) { const active = button.dataset.page === state.page; button.classList.toggle('active', active); if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current'); }
   if (state.page === 'home') main.innerHTML = homePage();
   else if (state.page === 'news') main.innerHTML = newsPage();
+  else if (state.page === 'updates') main.innerHTML = updatesPage();
+  else if (state.page === 'races') main.innerHTML = racesPage();
+  else if (state.page === 'bots') main.innerHTML = botsPage();
   else if (state.page === 'bugtracker') main.innerHTML = bugtrackerPage();
   else if (isEmbeddedPage()) main.innerHTML = databasePage();
   else if (state.page === 'addons') main.innerHTML = addonsPage();
@@ -604,6 +653,9 @@ function render() {
   fillIcons();
   if (state.page === 'bugtracker') loadIssues();
   if (state.page === 'addons') loadAddons();
+  if (state.page === 'updates' && !state.coaUpdates) loadUpdates();
+  if (state.page === 'races') loadRaces();
+  if (state.page === 'bots' && !state.coaBotRaces && state.settings.serverPath) loadBotRaces();
   if (isEmbeddedPage()) { updateDatabaseStatus(); requestAnimationFrame(syncDatabaseView); }
 }
 function showService(key) {
@@ -939,6 +991,22 @@ const actions = {
   'submit-bug': submitBugForm,
   'open-issue': element => api.openIssue(Number(element.dataset.issueOpen)),
   'coa-coffee': () => api.coaOpen('coffee'),
+  'coa-refresh-updates': () => { state.coaUpdates = null; render(); },
+  'coa-check-client': () => actions['check-updates'](),
+  'coa-update': element => coaRun(lt`Updating ${moduleNames[element.dataset.key]}…`, async () => {
+    const key = element.dataset.key;
+    const result = key === 'server' ? await api.coaUpdateServer() : await api.coaUpdateModule(key);
+    state.coaStatus = key === 'server' ? (result.upToDate ? t('Server is up to date.') : lt`Server updated to ${result.version}, ${result.applied} database updates applied.`) : lt`${moduleNames[key]} updated.`;
+    state.coaUpdates = null; state.settings = await api.bootstrap().then(data => data.settings); render();
+  }),
+  'coa-bots-all': () => { for (const box of main.querySelectorAll('[data-bot-race]:not(:disabled)')) box.checked = true; },
+  'coa-bots-none': () => { for (const box of main.querySelectorAll('[data-bot-race]:not(:disabled)')) box.checked = false; },
+  'coa-bots-save': async () => {
+    const allowed = [...main.querySelectorAll('[data-bot-race]:checked')].flatMap(box => box.dataset.botRace.split(',').map(Number));
+    const result = await api.coaSetBotRaces(allowed);
+    state.coaBotRaces = { ...state.coaBotRaces, excluded: result.excluded };
+    toast(lt`Saved: bots spawn as ${allowed.length} race ids. Restart the server to apply.`);
+  },
   'coa-duff': () => api.coaOpen('duff'),
   'coa-link': element => api.coaOpen(element.dataset.link),
   'coa-modules': showModules,
@@ -972,6 +1040,12 @@ const actions = {
     toast(lt`Realmlist set to ${result.realmlist}. Server: ${result.server}.`);
   }
 };
+main.addEventListener('input', event => {
+  if (event.target.id !== 'race-search') return;
+  state.raceQuery = event.target.value;
+  const results = document.getElementById('race-results');
+  if (results) results.outerHTML = new DOMParser().parseFromString(racesPage(), 'text/html').getElementById('race-results').outerHTML;
+});
 // Picking a realm mode fills the address box with the detected IP.
 modalContent.addEventListener('change', event => {
   if (event.target.name === 'realm-mode' && event.target.dataset.address) document.getElementById('realm-address').value = event.target.dataset.address;

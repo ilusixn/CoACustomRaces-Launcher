@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="builder/builder.css">
 </head>
-<body class="auth-locked">
+<body>
   <div class="app-shell">
     <div class="world-background" aria-hidden="true"></div>
     <header>
@@ -18,16 +18,16 @@
       </div>
       <div class="utilitybar">
         <button class="realm-select" data-action="realms"><span class="realm-icon realm-icon-image"><img src="assets/coa-custom-emblem.png" alt=""></span><span>CoA Custom Races</span><span class="chevron">⌄</span></button>
-        <div class="utility-right"><button data-action="notifications" class="icon-button" aria-label="Notifications"><i data-icon="bell"></i><span class="notification-dot" hidden></span></button><button data-action="settings" class="icon-button" aria-label="Settings"><i data-icon="settings"></i></button><button data-action="language" class="icon-button language-button" aria-label="Language" title="Language"><i data-icon="globe"></i></button><span class="utility-divider"></span><button class="account-button" data-action="account"><span class="avatar"><i data-icon="user"></i></span> My account <span class="chevron">⌄</span></button></div>
+        <div class="utility-right"><button data-action="notifications" class="icon-button" aria-label="Notifications"><i data-icon="bell"></i><span class="notification-dot" hidden></span></button><button data-action="settings" class="icon-button" aria-label="Settings"><i data-icon="settings"></i></button><button data-action="language" class="icon-button language-button" aria-label="Language" title="Language"><i data-icon="globe"></i></button></div>
       </div>
       <nav class="main-nav" aria-label="Main navigation">
-        <div class="nav-group nav-left"><button class="nav-link active" data-page="home"><i data-icon="home"></i>Home</button><button class="nav-link" data-page="news"><i data-icon="news"></i>News</button><button class="nav-link" data-page="store"><i data-icon="store"></i>Store</button><button class="nav-link" data-page="builder"><i data-icon="builder"></i>BUILDER</button><button class="nav-link" data-page="armory"><i data-icon="shield"></i>Armory</button></div>
+        <div class="nav-group nav-left"><button class="nav-link active" data-page="home"><i data-icon="home"></i>Home</button><button class="nav-link" data-page="updates"><i data-icon="refresh"></i>Updates</button><button class="nav-link" data-page="races"><i data-icon="user"></i>Races</button><button class="nav-link" data-page="builder"><i data-icon="builder"></i>Builder</button></div>
         <button class="brand" data-page="home" aria-label="CoA Custom Races home"><img class="brand-logo" src="assets/coa-custom-logo.png" alt="" width="900" height="636"></button>
-        <div class="nav-group nav-right"><button class="nav-link" data-page="bugtracker"><i data-icon="bug"></i>Bugtracker</button><button class="nav-link" data-action="wiki"><i data-icon="book"></i>Wiki</button><button class="nav-link" data-page="database"><i data-icon="database"></i>Database</button><button class="nav-link" data-page="addons"><i data-icon="addons"></i>Addons</button></div>
+        <div class="nav-group nav-right"><button class="nav-link" data-page="bots"><i data-icon="shield"></i>Bots</button><button class="nav-link" data-page="addons"><i data-icon="addons"></i>Addons</button><button class="nav-link" data-page="database"><i data-icon="database"></i>Database</button><button class="nav-link" data-page="bugtracker"><i data-icon="bug"></i>Bugtracker</button></div>
       </nav>
     </header>
     <main id="main-content" tabindex="-1"></main>
-    <footer><div><span class="status-dot"></span><span id="connection-status">Connecting...</span><span class="footer-separator">/</span><span id="footer-client">No client selected</span></div><div><button data-action="coa-duff" title="Originally developed by Duff (Duff-SPP) as Conquest Launcher">Launcher by Duff (Duff-SPP) <i data-icon="external"></i></button><span class="footer-separator">/</span><button data-action="coa-coffee">Buy me a coffee <i data-icon="external"></i></button><span class="footer-separator">/</span><button data-action="support">Support <i data-icon="external"></i></button><span class="footer-separator">/</span><span id="version">v0.1.0</span></div></footer>
+    <footer><div><span class="status-dot"></span><span id="connection-status">Local server mode</span><span class="footer-separator">/</span><span id="footer-client">No client selected</span></div><div><button data-action="coa-duff" title="Originally developed by Duff (Duff-SPP) as Conquest Launcher">Launcher by Duff (Duff-SPP) <i data-icon="external"></i></button><span class="footer-separator">/</span><button data-action="coa-coffee">Buy me a coffee <i data-icon="external"></i></button><span class="footer-separator">/</span><span id="version">v0.1.0</span></div></footer>
   </div>
   <div id="popover-root"></div>
   <dialog id="modal" aria-labelledby="modal-title"><div id="modal-content"></div></dialog>

@@ -68,6 +68,12 @@ contextBridge.exposeInMainWorld('launcher', Object.freeze({
   coaApplyModules: choice => invoke('coa:apply-modules', choice),
   coaSetRealm: (mode, address) => invoke('coa:set-realm', mode, address),
   coaOpen: key => invoke('coa:open', key),
+  coaUpdates: () => invoke('coa:updates'),
+  coaUpdateServer: () => invoke('coa:update-server'),
+  coaUpdateModule: key => invoke('coa:update-module', key),
+  coaRaces: () => invoke('coa:races'),
+  coaBotRaces: () => invoke('coa:bot-races'),
+  coaSetBotRaces: allowed => invoke('coa:set-bot-races', allowed),
   onCoaProgress: callback => {
     const listener = (_event, status) => callback(status);
     ipcRenderer.on('coa:progress', listener);

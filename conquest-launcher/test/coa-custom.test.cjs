@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const { CoaCustom, hostnameOk, networkAddresses } = require('../src/coa-custom.cjs');
+const { CoaCustom, hostnameOk, networkAddresses, parseRaces } = require('../src/coa-custom.cjs');
 const { sanitize } = require('../src/settings.cjs');
 
 test('module switches replace an existing key, add a missing one and create the file from .dist', async t => {
@@ -20,6 +20,26 @@ test('module switches replace an existing key, add a missing one and create the 
   assert.equal(await fs.readFile(path.join(dir, 'playerbots.conf'), 'utf8'), '[worldserver]\nAiPlayerbot.Enabled = 0\nAiPlayerbot.Other = 5\n');
   assert.match(await fs.readFile(path.join(dir, 'coa_custom_races.conf'), 'utf8'), /^CoACustomRaces\.Enable = 1$/m);
   await assert.rejects(coa.setConf(root, 'missing.conf', 'X', 1), /missing from the server/);
+});
+
+test('bot races keep at least one race and always exclude Test Race', async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'coa-bots-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const dir = path.join(root, 'Core/configs/modules');
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, 'playerbots.conf'), 'AiPlayerbot.ExcludedBotRaces = "65"\nAiPlayerbot.CrashingBotRaces = "72,77"\n');
+  await fs.writeFile(path.join(dir, 'coa_custom_races.conf'), '');
+  const coa = new CoaCustom({ fetchImpl: null, notify: () => {} });
+  assert.deepEqual(await coa.botRaces(root), { excluded: [65], crashing: [72, 77] });
+  await coa.setBotRaces(root, [1, 13], [1, 2, 13, 14]);
+  assert.deepEqual((await coa.botRaces(root)).excluded, [2, 14, 65]);
+  assert.match(await fs.readFile(path.join(dir, 'coa_custom_races.conf'), 'utf8'), /CoACustomRaces\.BotsEnable = 1/);
+  await assert.rejects(coa.setBotRaces(root, [], [1]), /at least one race/);
+});
+
+test('race list parses single ids and Alliance/Horde pairs', () => {
+  const rows = parseRaces('| Id | Race | Side | Credit | Notes |\n|---|---|---|---|---|\n| 20/29 | Pandaren | Both | Eunoia |  |\n| 105 | Gilgoblin | Horde | ilusixn | new |\n');
+  assert.deepEqual(rows.map(r => [r.ids, r.name]), [[[20, 29], 'Pandaren'], [[105], 'Gilgoblin']]);
 });
 
 test('realm addresses accept IPs and host names only', () => {

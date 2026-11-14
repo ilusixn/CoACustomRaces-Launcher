@@ -129,11 +129,7 @@ function handle(name, action) {
       throw new Error('Untrusted launcher request.');
     }
     try {
-      // Local mode (own server, LAN, Hamachi) does not need a coa-development.org account.
-      if (['launcher:client-check', 'launcher:client-update', 'launcher:launch', 'launcher:choose-client', 'launcher:choose-install'].includes(name) && !settings.localMode && !await portal.account()) {
-        await gameCredentials.write(null);
-        throw new Error('Please sign in with your game account.');
-      }
+      // CoA Custom Races edition: own server, LAN or Hamachi only, no account sign-in.
       return { ok: true, value: await action(...args) };
     }
     catch (error) { return { ok: false, error: error.message || 'The request could not be completed.' }; }
@@ -153,12 +149,12 @@ async function clientInfo() {
   let detectionError = '';
   try { running ||= await isGameRunning(directory); } catch (error) { detectionError = error.message; }
   const executable = path.join(directory, path.basename(config.clientExecutable));
-  const customExecutable = settings.modules?.races ? await fs.stat(path.join(directory, 'CoACustomRace.exe')).then(s => s.isFile()).catch(() => false) : false;
+  const customReady = await fs.stat(path.join(directory, 'CoACustomRace.exe')).then(s => s.isFile()).catch(() => false);
   let folderAvailable = false;
   try {
     folderAvailable = (await fs.stat(directory)).isDirectory();
     const stat = await fs.stat(executable);
-    return { installed: stat.isFile(), addonsReady: stat.isFile() || localTesting, running, detectionError, path: directory, executable: customExecutable ? 'CoACustomRace.exe' : path.basename(config.clientExecutable) };
+    return { installed: stat.isFile(), addonsReady: stat.isFile() || localTesting, running, detectionError, path: directory, customReady, executable: 'CoACustomRace.exe' };
   } catch (error) {
     return { installed: false, addonsReady: localTesting && folderAvailable && error.code === 'ENOENT', running, detectionError, path: directory, error: error.code === 'ENOENT' ? '' : `Client folder is unavailable: ${error.message}` };
   }
@@ -452,30 +448,9 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     const directory = app.isPackaged ? path.join(publicRoot, 'licenses') : path.resolve(__dirname, '../..');
     return Promise.all(['LICENSE', 'COPYING', 'ATTRIBUTION.md', 'THIRD_PARTY_NOTICES.md'].map(async name => ({ name, text: await fs.readFile(path.join(directory, name), 'utf8') })));
   });
-  handle('launcher:account', async () => { const account = await portal.account(); if (!account) await gameCredentials.write(null); return account; });
-  handle('launcher:discord', () => portal.request('/api/community/discord'));
-  handle('launcher:login', async (login, password, code, remember = true) => {
-    await gameCredentials.write(null);
-    const result = await portal.login(login, password, { rememberForGame: settings.autoLoginGame === true, code, rememberSession: remember !== false });
-    if (!result?.twoFactorRequired && result?.username && remember !== false && settings.autoLoginGame) {
-      try { await gameCredentials.write(portal.getGameLogin()); }
-      catch { result.persistenceWarning = 'Signed in, but game credentials could not be saved securely. Automatic game login will require signing in again after restart.'; }
-    }
-    return result;
-  });
-  handle('launcher:register', (username, email, password, confirmPassword, acceptTestWarning) => portal.register(username, email, password, confirmPassword, acceptTestWarning));
-  handle('launcher:account-overview', () => portal.overview());
-  handle('launcher:account-characters', () => portal.characters());
-  handle('launcher:discord-link-status', () => portal.discordLinkStatus());
-  handle('launcher:discord-link-start', async () => {
-    const result = await portal.startDiscordLink();
-    const url = trustedHttps(result?.authorizeUrl, 'Discord authorization URL');
-    if (url.hostname !== 'discord.com' || url.pathname !== '/oauth2/authorize') throw new Error('The backend returned an invalid Discord authorization URL.');
-    await shell.openExternal(url.href);
-    return { pending: true, expiresInSeconds: Number(result?.expiresInSeconds) || 600 };
-  });
-  handle('launcher:discord-link-unlink', () => portal.unlinkDiscord());
-  handle('launcher:logout', async () => { await gameCredentials.write(null); return portal.logout(); });
+  handle('launcher:account', async () => null); // no account service in this edition
+  handle('launcher:discord', async () => null);
+  // Account sign-in, registration and Discord linking are removed: this edition has no account service.
 
   handle('launcher:launcher-check', () => launcherUpdates.check());
   handle('launcher:launcher-install', () => launcherUpdates.install());
@@ -521,6 +496,8 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     if (game) throw new Error('Your game is already running.');
     const info = await clientInfo();
     if (!info.installed) throw new Error('Choose your installed client first.');
+    // The game always starts with CoACustomRace.exe, installed by the CoA Custom Races module.
+    if (info.customReady === false) throw new Error('CoACustomRace.exe is missing. Open Apply modules and install CoA Custom Races.');
     await mutateClient(() => configureClientGraphics(info.path, settings.graphicsCompatibility, settings.disableGraphicsEnhancements));
     if (!config.localDownloadDemo) {
       await probeClientFolder(info.path);
@@ -529,7 +506,7 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     }
     await mutateClient(async () => {
       await clearClientCache(info.path);
-      await configureRealm(info.path, settings.localMode ? settings.realmlist : config.realmlist);
+      await configureRealm(info.path, settings.realmlist);
     });
 
     const credentialVersion = settings.autoLoginGame ? gameCredentials.version : 0;
@@ -547,7 +524,7 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     const launched = {};
     game = launched;
     try {
-      launched.pid = await launchGame(path.join(info.path, info.executable || path.basename(config.clientExecutable)), { hdPatches: settings.hdPatches, wineCompatibility: settings.wineCompatibility, getAutoLogin: () => {
+      launched.pid = await launchGame(path.join(info.path, info.executable || 'CoACustomRace.exe'), { hdPatches: settings.hdPatches, wineCompatibility: settings.wineCompatibility, getAutoLogin: () => {
         if (!settings.autoLoginGame) return null;
         if (credentialVersion !== gameCredentials.version) throw new Error('Sign into the launcher again to use automatic game login.');
         const credentials = portal.getGameLogin() || savedGameLogin;
@@ -655,7 +632,7 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     const result = await dialog.showOpenDialog(window, { title: nativeText('Choose an EMPTY folder for your server (about 15 GB)'), properties: ['openDirectory', 'createDirectory'] });
     if (result.canceled || !result.filePaths[0]) return null;
     const created = await coa.createServer(result.filePaths[0]);
-    await persist({ ...settings, serverPath: created.path, localMode: true });
+    await persist({ ...settings, serverPath: created.path, localMode: true, versions: { ...settings.versions, server: created.version } });
     return created;
   });
   handle('coa:locate-server', async () => {
@@ -675,8 +652,33 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     if (!info.installed && (modules.squid || modules.devMenu || modules.races)) throw new Error('Download or locate the game client first.');
     if (info.installed) { writableClient(info.path); await requireGameClosed(info.path); }
     const result = await mutateClient(() => coa.applyModules({ serverPath: settings.serverPath, clientPath: info.installed ? info.path : '', ...modules }));
-    await persist({ ...settings, modules, customOwned: modules.races ? result.owned : [] });
+    await persist({ ...settings, modules, customOwned: result.owned || (modules.races ? settings.customOwned : []), versions: { ...settings.versions, ...result.versions } });
     return result;
+  });
+  // ---- updates, connected to each repository's latest GitHub release ----
+  handle('coa:updates', async () => ({ installed: settings.versions, latest: await coa.latestVersions(), modules: settings.modules, server: settings.serverPath }));
+  handle('coa:update-server', async () => {
+    const result = await coa.updateServer(await requireServer(), settings.versions.server);
+    await persist({ ...settings, versions: { ...settings.versions, server: result.version } });
+    return result;
+  });
+  handle('coa:update-module', async key => {
+    if (!['squid', 'devMenu', 'races'].includes(key)) throw new Error('Unknown module.');
+    if (game) throw new Error('Close the game before updating.');
+    const info = await clientInfo();
+    if (!info.installed) throw new Error('Download or locate the game client first.');
+    writableClient(info.path); await requireGameClosed(info.path);
+    const result = await mutateClient(() => coa.applyModules({ clientPath: info.path, only: key }));
+    await persist({ ...settings, customOwned: result.owned || settings.customOwned, versions: { ...settings.versions, ...result.versions } });
+    return result;
+  });
+  // ---- races and bot races ----
+  handle('coa:races', () => coa.races());
+  handle('coa:bot-races', async () => coa.botRaces(await requireServer()));
+  handle('coa:set-bot-races', async allowed => {
+    if (!Array.isArray(allowed) || !allowed.every(Number.isInteger)) throw new Error('Invalid race list.');
+    const known = [...new Set((await coa.races()).flatMap(race => race.ids))];
+    return coa.setBotRaces(await requireServer(), allowed.filter(id => known.includes(id)), known);
   });
   handle('coa:set-realm', async (mode, address) => {
     if (!['local', 'lan', 'hamachi', 'custom'].includes(mode)) throw new Error('Unknown realm mode.');

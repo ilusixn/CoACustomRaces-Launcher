@@ -225,7 +225,6 @@ showSettings = function (tab = state.settingsTab) {
     pane.insertAdjacentHTML('beforeend', lh`<label class="setting-row"><span class="setting-title">${t('When the game starts')}</span><select data-setting="launchBehavior" aria-label="${t('When the game starts')}"><option value="close" ${state.settings.launchBehavior === 'close' ? 'selected' : ''}>${t('Close launcher')}</option><option value="minimize" ${state.settings.launchBehavior === 'minimize' ? 'selected' : ''}>${t('Minimize launcher')}</option><option value="keep-open" ${state.settings.launchBehavior === 'keep-open' ? 'selected' : ''}>${t('Keep launcher open')}</option></select></label>`);
     pane.insertAdjacentHTML('beforeend', launcherI18n.html('<div class="button-row"><button class="secondary-button" data-action="launcher-check">Check launcher updates</button><button id="launcher-restart" class="gold-button" data-action="launcher-install" hidden>Restart & update</button></div><p id="launcher-update-message" role="status"></p>'));
   } else if (tab === 'game') {
-    pane.insertAdjacentHTML('beforeend', toggleRow('autoLoginGame', t('Automatically log into the game'), t('Enable this, then sign out and sign back into the launcher. Remember me saves your game credentials with system encryption; otherwise they stay in memory for this session. Launch arguments are visible to local process tools. Authenticator prompts may still appear.')));
     pane.insertAdjacentHTML('beforeend', toggleRow('autoLaunchAfterUpdate', t('Launch game after updating'), t('Automatically starts the game after updating with the main button. Turn off to update without launching. Your realmlist changes only when you launch the game.')));
     pane.insertAdjacentHTML('beforeend', lh`<div class="setting-row"><span><span class="setting-title">${t('Clear game cache')}</span><span class="setting-description">${t('Removes the game Cache folder. The game recreates it when needed; settings and addons are kept.')}</span></span><button class="secondary-button" data-action="clear-cache" ${!state.client.installed || state.client.running || clientBusy() ? 'disabled' : ''}>${t('Clear cache')}</button></div>`);
     pane.insertAdjacentHTML('beforeend', toggleRow('graphicsCompatibility', t('Use compatibility graphics (disable DXVK)'), t('Try this if the game shows “Failed to find a suitable display device.” Uses the default DirectX renderer. Applies on your next launch.')));
@@ -287,6 +286,12 @@ actions.play = async () => {
     if (await performClientUpdate() === false) return;
     if (state.settings?.autoLaunchAfterUpdate === false) return;
   }
+  // CoA Custom Races edition: the game starts with CoACustomRace.exe, which the Custom Races module installs.
+  if (state.client.installed && state.client.customReady === false) {
+    state.settings.modules = { ...(state.settings.modules || {}), races: true };
+    showModules(); toast(t('Install CoA Custom Races first: it adds CoACustomRace.exe, the game this launcher starts.'));
+    return;
+  }
   let result = await api.launch();
   if (result.needsUpdate) {
     if (await performClientUpdate() === false) return;
@@ -311,8 +316,6 @@ if (window.launcher) {
   api.onLauncherUpdate(status => { state.launcherUpdate = status; if (status.version) state.launcherUpdateVersion = status.version; updateControls(); if (status.phase === 'downloaded') { playNotificationSound('launcher-update', status.version); toast(tm(status.message) + ' ' + t('Open Settings to restart.')); } });
   window.addEventListener('DOMContentLoaded', async () => {
     await api.bootstrap();
-    const refreshDiscord = () => api.discord().then(data => { state.discord = data; updateControls(); }).catch(() => {});
-    refreshDiscord(); setInterval(refreshDiscord, 5 * 60 * 1000);
     let refreshingClient = false;
     const refreshClient = async () => {
       if (refreshingClient) return;
@@ -321,9 +324,9 @@ if (window.launcher) {
     };
     window.addEventListener('focus', refreshClient);
     setInterval(refreshClient, 10000);
-    api.account().then(account => { state.account = account; if (typeof syncAuthGate === 'function') syncAuthGate(account); state.accountServiceAvailable = true; updateControls(); document.getElementById('connection-status').textContent = account ? lt`Signed in: ${account.username}` : t('Account service connected'); }).catch(() => { state.accountServiceAvailable = false; document.getElementById('connection-status').textContent = t('Account service unavailable'); });
+    state.accountServiceAvailable = null; // no account service: local server, LAN or Hamachi only
     try {
-      if (await api.account() && !state.client.running) state.clientUpdatePlan = await api.checkClient(false);
+      if (!state.client.running) state.clientUpdatePlan = await api.checkClient(false);
       // Checking is automatic; downloading/applying always requires a player click.
     } catch (error) { state.clientProgress = { phase: 'error', message: tm(error.message) }; }
     updateControls();

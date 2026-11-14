@@ -262,3 +262,17 @@ body.auth-locked .main-nav, body.auth-locked .utilitybar, body.auth-locked #main
 .realm-option input{margin-top:3px;accent-color:#c99550}
 #realm-address{width:100%;margin-bottom:6px}
 .link-button{color:#e2b36f;text-decoration:underline;text-underline-offset:2px;padding:0;font-size:inherit}
+
+.update-table,.race-table{border:1px solid #aa7e4745;border-radius:8px;overflow:hidden;margin-bottom:16px}
+.update-row{display:grid;grid-template-columns:2.2fr 1fr 1fr 1.2fr 120px;gap:12px;align-items:center;padding:12px 18px;border-top:1px solid #a8814e26;font-size:12px;color:#dac2a0}
+.update-row small,.race-row small{display:block;font-size:10px;color:#a88f73;margin-top:3px}
+.update-head,.race-head{background:#2c1e17;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#d0b18a;border-top:0}
+.update-status.pending{color:#f3c27a;font-weight:600}
+.update-row button{padding:8px 10px}
+.race-row{display:grid;grid-template-columns:90px 1.6fr .8fr 2fr;gap:12px;padding:10px 18px;border-top:1px solid #a8814e26;font-size:12px;color:#dac2a0;align-items:start}
+.race-id{font-family:var(--display);font-weight:700;color:#f3d6a0}
+.bot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:18px}
+.bot-race{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid #a0774338;border-radius:7px;background:#201613b3;cursor:pointer;font-size:12px;color:#e2c79f}
+.bot-race input{margin-top:3px;accent-color:#c99550}
+.bot-race small{display:block;font-size:10px;color:#a88f73;margin-top:3px}
+.bot-race.blocked{opacity:.45;cursor:not-allowed}

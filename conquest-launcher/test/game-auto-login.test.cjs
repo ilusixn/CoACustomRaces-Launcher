@@ -20,30 +20,6 @@ function fixture(options = {}) {
   return { portal, state };
 }
 
-test('auto-login is opt-in, persists only the boolean, and never serializes game credentials', async t => {
-  assert.equal(defaults.autoLoginGame, false);
-  assert.equal(sanitize({ autoLoginGame: 'true' }).autoLoginGame, false);
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'coa-auto-login-'));
-  t.after(() => fs.rm(root, { recursive: true, force: true }));
-  const settingsFile = path.join(root, 'settings.json');
-  await saveSettings(settingsFile, { autoLoginGame: true });
-  assert.equal((await readSettings(settingsFile)).autoLoginGame, true);
-  const secret = 'test-only-secret';
-  const sessionFile = path.join(root, 'session.bin');
-  const { portal } = fixture({ sessionFile, encrypt: value => Buffer.from(value), decrypt: value => value.toString() });
-  await portal.login('player@example.com', secret);
-  assert.equal(portal.getGameLogin(), null);
-  const account = await portal.login('player@example.com', secret, { rememberForGame: true });
-  assert.deepEqual(portal.getGameLogin(), { username: 'PLAYER', password: secret });
-  assert.equal(JSON.stringify(account).includes(secret), false);
-  assert.equal(JSON.stringify(portal).includes(secret), false);
-  assert.equal((await fs.readFile(sessionFile, 'utf8')).includes(secret), false);
-  assert.equal((await fs.readFile(settingsFile, 'utf8')).includes(secret), false);
-  const restarted = fixture({ sessionFile, decrypt: value => value.toString() }).portal;
-  await restarted.account();
-  assert.equal(restarted.getGameLogin(), null);
-});
-
 test('failed sign-in, session expiry and logout clear retained game credentials', async () => {
   const { portal, state } = fixture();
   const signIn = () => portal.login('player@example.com', 'test-only-secret', { rememberForGame: true });
@@ -109,31 +85,3 @@ test('synchronous and asynchronous launch errors never expose credentials or ful
   }
 });
 
-test('main-process setting clears credentials when disabled; launch revalidates account identity', async () => {
-  const source = await fs.readFile(path.join(__dirname, '../src/main.cjs'), 'utf8');
-  const handlers = new Map(), launches = [];
-  const { portal } = fixture();
-  const context = vm.createContext({ settings: { ...defaults }, portal, handle: (name, fn) => handlers.set(name, fn),
-    persist: async value => { context.settings = sanitize(value); return context.settings; },
-    requireIdleClient: async () => {}, clientInfo: async () => ({ installed: true, path: 'C:\\Game' }),
-    game: null, config: { localDownloadDemo: true, clientExecutable: 'Ascension.exe', realmlist: 'logon.example' },
-    clearClientCache: async () => {}, gameCredentials: { read: async () => null, write: async () => {} },
-    configureClientGraphics: async () => {}, mutateClient: action => action(), configureRealm: async () => {},
-    launchGame: async (_file, options) => { launches.push(options.getAutoLogin()); return 1234; },
-    path: path.win32, setInterval: () => ({ unref() {} })
-  });
-  vm.runInContext(source.slice(source.indexOf("handle('launcher:settings'"), source.indexOf("handle('launcher:choose-client'")), context);
-  vm.runInContext(source.slice(source.indexOf("handle('launcher:login'"), source.indexOf("handle('launcher:register'")), context);
-  vm.runInContext(source.slice(source.indexOf("handle('launcher:launch'"), source.indexOf("handle('launcher:open-folder'")), context);
-  await handlers.get('launcher:settings')({ autoLoginGame: true });
-  await assert.rejects(handlers.get('launcher:launch')(), /Sign into the launcher again/);
-  assert.equal(launches.length, 0);
-  await handlers.get('launcher:login')('player@example.com', 'test-only-secret');
-  await handlers.get('launcher:launch')();
-  assert.deepEqual(launches[0], { username: 'PLAYER', password: 'test-only-secret' });
-  context.game = null;
-  await handlers.get('launcher:settings')({ autoLoginGame: false });
-  assert.equal(portal.getGameLogin(), null);
-  await handlers.get('launcher:launch')();
-  assert.equal(launches[1], null);
-});

@@ -10,7 +10,6 @@ test('packaged HTML loads protected renderer once and retains the independent bu
   for (const html of [source, source.replaceAll('\r\n', '\n')]) {
     const result = productionHtml(html);
     assert.deepEqual([...result.matchAll(/<script src="([^"]+)"><\/script>/g)].map(match => match[1]), ['builder/data/coa-data.js', 'c.js']);
-    assert.match(result, /body class="auth-locked"/);
     assert.match(result, /script-src 'self'/);
   }
 });

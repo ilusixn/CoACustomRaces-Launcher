@@ -40,15 +40,6 @@ test('outdated version failures never fall back to an offline cached release', a
   await assert.rejects(updater.check('C:\\Game',false,true), /Update your launcher/);assert.equal(cacheReads,0);assert.equal(headers[0]['X-CoA-Launcher-Version'],'0.8.0');
 });
 
-test('authentication gate hides launcher content until verified and clears account details on expiry', async () => {
-  const source = await fs.readFile(path.join(__dirname,'../public/auth-gate.js'),'utf8');
-  const gate={hidden:false};let locked=true,closed=0;const elements=[{},{}];
-  const context={setInterval(){},state:{account:null,version:'0.8.1'},document:{body:{classList:{toggle:(_name,value)=>{locked=value;}}},getElementById:()=>gate,querySelectorAll:()=>elements,addEventListener(){}},window:{addEventListener(){}},lh:(strings,...values)=>strings.reduce((all,part,i)=>all+part+(values[i]??''),''),t:x=>x,escape:x=>x,closeModal:()=>closed++};
-  vm.runInNewContext(source,context);context.syncAuthGate(null);assert.equal(locked,true);assert.equal(elements[0].inert,true);
-  context.syncAuthGate({username:'PLAYER'});assert.equal(locked,false);assert.equal(gate.hidden,true);
-  context.state.accountOverview={email:'private'};context.syncAuthGate(null);assert.equal(locked,true);assert.equal(context.state.accountOverview,null);assert.equal(closed,1);
-});
-
 test('object downloads send the required version and a rejected version neither retries nor overwrites the partial', async t => {
   const folder = await fs.mkdtemp(path.join(os.tmpdir(), 'coa-version-object-')); t.after(() => fs.rm(folder, { recursive: true, force: true }));
   const data = Buffer.from('verified client bytes'), hash=crypto.createHash('sha256').update(data).digest('hex');
