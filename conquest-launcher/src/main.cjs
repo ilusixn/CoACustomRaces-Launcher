@@ -708,6 +708,11 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     await persist({ ...settings, modules: { squid: false, devMenu: false, races: false }, customOwned: [], versions: { ...settings.versions, squid: '', devMenu: '', races: '' } });
     return true;
   });
+  // ---- SquidBots dashboard ----
+  handle('coa:bot-options', async () => coa.botOptions(await requireServer()));
+  handle('coa:set-bot-option', async (key, value) => coa.setBotOption(await requireServer(), String(key), value));
+  handle('coa:bot-stats', async () => coa.botStats(await requireServer()));
+  handle('coa:reset-bots', async () => coa.resetBots(await requireServer(), realmAddress()));
   // ---- races and bot races ----
   handle('coa:races', () => coa.races());
   handle('coa:bot-races', async () => coa.botRaces(await requireServer()));

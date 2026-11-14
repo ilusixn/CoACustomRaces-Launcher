@@ -444,7 +444,7 @@ class CoaCustom {
 
   // shortcut: keeps the newest 8 automatic backups, manual ones are never deleted; make this a setting if players want more.
   async pruneBackups(dir) {
-    const auto = (await fsp.readdir(dir)).filter(n => /^characters-\d{8}-\d{6}-(before-update|before-restore)\.sql\.gz$/.test(n)).sort().reverse();
+    const auto = (await fsp.readdir(dir)).filter(n => /^characters-\d{8}-\d{6}-(before-update|before-restore|before-reset)\.sql\.gz$/.test(n)).sort().reverse();
     for (const old of auto.slice(8)) await fsp.rm(path.join(dir, old), { force: true });
   }
 
@@ -524,6 +524,61 @@ class CoaCustom {
       this.emit('server', 'Deleting the server folder…');
       await fsp.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
       this.emit('ready', 'Server deleted.');
+    });
+  }
+
+  // ---------- SquidBots dashboard ----------
+
+  // Every active AiPlayerbot.* line of the server's playerbots.conf with the comment block above it.
+  async botOptions(root) {
+    const dir = path.join(root, 'Core/configs/modules');
+    const text = await fsp.readFile(path.join(dir, 'playerbots.conf'), 'utf8').catch(() => fsp.readFile(path.join(dir, 'playerbots.conf.dist'), 'utf8').catch(() => ''));
+    const options = []; let notes = [];
+    for (const line of text.split(/\r?\n/)) {
+      const kv = line.match(/^(AiPlayerbot\.[A-Za-z0-9_.]+)\s*=\s*(.*?)\s*$/);
+      if (kv) { options.push({ key: kv[1], value: kv[2].replace(/^"(.*)"$/, '$1'), quoted: /^".*"$/.test(kv[2]), description: notes.join(' ').slice(0, 400) }); notes = []; }
+      else if (/^#/.test(line)) notes.push(line.replace(/^#+\s?/, '').trim());
+      else notes = [];
+    }
+    return options;
+  }
+
+  async setBotOption(root, key, value) {
+    const known = (await this.botOptions(root)).find(o => o.key === key);
+    if (!known) throw new Error('Unknown SquidBots option.');
+    const text = String(value);
+    if (/[\r\n"]/.test(text) || text.length > 300) throw new Error('That value is not allowed.');
+    await this.setConf(root, 'playerbots.conf', key, known.quoted ? `"${text}"` : text);
+    return { key, value: text };
+  }
+
+  // Bots on the server's database, by race. null when the database is not running.
+  async botStats(root) {
+    if (!(await this.dbReady(root))) return null;
+    const rows = await this.sql(root, "SELECT c.race, COUNT(*), SUM(c.online) FROM acore_characters.characters c JOIN acore_auth.account a ON a.id = c.account WHERE a.username LIKE 'RNDBOT%' GROUP BY c.race ORDER BY 2 DESC;").catch(() => '');
+    const races = rows.split(/\r?\n/).filter(Boolean).map(r => r.split('\t')).map(([race, count, online]) => ({ race: Number(race), count: Number(count), online: Number(online) || 0 }));
+    return { total: races.reduce((n, r) => n + r.count, 0), online: races.reduce((n, r) => n + r.online, 0), races };
+  }
+
+  // Deletes every random bot: the module purges bot accounts, guilds and arena teams on the next start when asked to,
+  // so this switches that on, starts once, then always switches it back off (otherwise every start wipes the bots).
+  async resetBots(root, realmAddress) {
+    return this.exclusive(async () => {
+      this.emit('server', 'Stopping the server…');
+      await this.manage(root, 'stop-all').catch(() => {});
+      await this.backupInternal(root, 'before-reset');
+      const flags = ['AiPlayerbot.DeleteRandomBotAccounts', 'AiPlayerbot.DeleteRandomBotGuilds', 'AiPlayerbot.DeleteRandomBotArenaTeams'];
+      try {
+        for (const flag of flags) await this.setConf(root, 'playerbots.conf', flag, 1);
+        this.emit('server', 'Deleting the bots (one start, this can take several minutes)…');
+        await this.disableCompanions(root);
+        await this.manage(root, 'start-all').catch(() => {});
+      } finally {
+        await this.manage(root, 'stop-all').catch(() => {});
+        for (const flag of flags) await this.setConf(root, 'playerbots.conf', flag, 0).catch(() => {});
+      }
+      this.emit('ready', 'Bots deleted. Start the server to create new ones.');
+      return true;
     });
   }
 

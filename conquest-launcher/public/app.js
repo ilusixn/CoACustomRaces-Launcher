@@ -364,7 +364,7 @@ async function showRealm() {
   openModal(lh`${modalHeader(t('Realmlist'), t('How players reach your server'))}<div class="modal-body">${option('local', t('Local'), t('Only this PC plays (127.0.0.1).'), '127.0.0.1')}${option('lan', t('LAN play'), lan ? `${t('Players on your home network join')} ${lan}` : t('No LAN address found on this PC.'), lan)}${option('hamachi', 'LogMeIn Hamachi', ham ? `${t('Friends in your Hamachi network join')} ${ham}` : t('Hamachi is not running. Install and join a network first.'), ham)}${option('custom', t('Join a friend'), t('Play on someone else\'s server: enter their LAN or Hamachi IP.'), s.realmMode === 'custom' ? s.realmlist : '')}<label class="form-label" for="realm-address">${t('Address')}</label><input type="text" id="realm-address" value="${escape(s.realmlist || '127.0.0.1')}" spellcheck="false"><div class="info-box">${icon('info')}<span>${t('Hosting? Friends set "Join a friend" with your address. Allow worldserver and authserver through Windows Firewall (ports 3724 and 8085).')} <button class="link-button" data-action="coa-link" data-link="hamachi">LogMeIn Hamachi</button></span></div></div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button" data-action="coa-realm-save">${t('Save')}</button></div>`);
 }
 function formatSize(bytes) { return bytes > 2 ** 30 ? (bytes / 2 ** 30).toFixed(2) + ' GB' : (bytes / 2 ** 20).toFixed(1) + ' MB'; }
-const backupReasons = { manual: 'Manual', 'before-update': 'Before a server update', 'before-restore': 'Before a restore' };
+const backupReasons = { 'before-reset': 'Before a bot reset', manual: 'Manual', 'before-update': 'Before a server update', 'before-restore': 'Before a restore' };
 async function showBackups(notice = '') {
   if (!state.settings.serverPath) { toast(t('Create or locate your server first.')); return; }
   let list = [];
@@ -424,6 +424,8 @@ async function loadRaces() {
 }
 function botsPage() {
   if (!state.settings.serverPath) return lh`<div class="content-page">${titleBlock(t('Bot races'), t('Choose which races SquidBots spawn as.'))}<div class="empty-panel"><h2>${t('No server yet')}</h2><p>${t('Create or locate your server on the Home page first.')}</p></div></div>`;
+  const tabs = lh`<div class="tabs" role="tablist"><button role="tab" class="tab ${state.botTab !== 'dashboard' ? 'active' : ''}" data-action="coa-bot-tab" data-tab="races">${t('Bot races')}</button><button role="tab" class="tab ${state.botTab === 'dashboard' ? 'active' : ''}" data-action="coa-bot-tab" data-tab="dashboard">${t('SquidBots dashboard')}</button></div>`;
+  if (state.botTab === 'dashboard') return botDashboard(tabs);
   const bots = state.coaBotRaces;
   const excluded = new Set(bots?.excluded || []); const crashing = new Set(bots?.crashing || []);
   const cards = (state.coaRaces || []).filter(r => !/skyborne/i.test(r.name)).map(r => {
@@ -431,7 +433,30 @@ function botsPage() {
     const on = !blocked && r.ids.some(id => !excluded.has(id));
     return lh`<label class="bot-race ${blocked ? 'blocked' : ''}"><input type="checkbox" data-bot-race="${r.ids.join(',')}" ${on ? 'checked' : ''} ${blocked ? 'disabled' : ''}><span><strong>${escape(r.name)}</strong><small>${escape(raceIdsText(r))} · ${escape(r.side)}${blocked ? ' · ' + t('crashes bots, always off') : ''}</small></span></label>`;
   }).join('');
-  return lh`<div class="content-page">${titleBlock(t('Bot races'), t('Checked races are the ones SquidBots spawn as. Saved to your server; new bots use it after a server restart.'), state.settings.modules?.squid ? 'SQUIDBOTS ON' : 'SQUIDBOTS OFF')}<div class="button-row"><button class="secondary-button" data-action="coa-bots-all">${t('Select all')}</button><button class="secondary-button" data-action="coa-bots-none">${t('Unselect all')}</button><button class="gold-button" data-action="coa-bots-save">${t('Save')}</button></div>${!bots || !state.coaRaces ? lh`<p class="page-description">${t('Loading…')}</p>` : lh`<div class="bot-grid">${cards}</div>`}</div>`;
+  return lh`<div class="content-page">${titleBlock(t('Bot races'), t('Checked races are the ones SquidBots spawn as. Saved to your server; new bots use it after a server restart.'), state.settings.modules?.squid ? 'SQUIDBOTS ON' : 'SQUIDBOTS OFF')}${tabs}<div class="button-row"><button class="secondary-button" data-action="coa-bots-all">${t('Select all')}</button><button class="secondary-button" data-action="coa-bots-none">${t('Unselect all')}</button><button class="gold-button" data-action="coa-bots-save">${t('Save')}</button><button class="secondary-button danger-button" data-action="coa-bots-reset-ask">${t('Reset bots')}</button></div><p class="page-description">${t('Bots keep the race they were created with. After changing the checked races, press Reset bots so every bot is recreated with them.')}</p>${!bots || !state.coaRaces ? lh`<p class="page-description">${t('Loading…')}</p>` : lh`<div class="bot-grid">${cards}</div>`}</div>`;
+}
+const quickBotOptions = [
+  ['AiPlayerbot.RandomBotAutologin', 'Random bots log in', 'switch'], ['AiPlayerbot.MinRandomBots', 'Minimum bots online', 'number'], ['AiPlayerbot.MaxRandomBots', 'Maximum bots online', 'number'],
+  ['AiPlayerbot.RandomBotMinLevel', 'Lowest bot level', 'number'], ['AiPlayerbot.RandomBotMaxLevel', 'Highest bot level', 'number'], ['AiPlayerbot.RandomBotsPerInterval', 'Bots logging in per interval', 'number'],
+  ['AiPlayerbot.AllowGuildBots', 'Bots join guilds', 'switch'], ['AiPlayerbot.RandomBotJoinBG', 'Bots join battlegrounds', 'switch'], ['AiPlayerbot.RandomBotJoinLfg', 'Bots join dungeon finder', 'switch'],
+];
+function botDashboard(tabs) {
+  const opts = state.botOpts, stats = state.botStats;
+  const byKey = new Map((opts || []).map(o => [o.key, o]));
+  const raceName = id => (state.coaRaces || []).find(r => r.ids.includes(id))?.name || `#${id}`;
+  const quick = quickBotOptions.filter(([key]) => byKey.has(key)).map(([key, label, kind]) => { const v = byKey.get(key).value; return kind === 'switch'
+    ? lh`<label class="setting-row"><span><span class="setting-title">${t(label)}</span></span><input class="switch" type="checkbox" data-bot-opt="${key}" data-kind="switch" ${v === '1' ? 'checked' : ''}></label>`
+    : lh`<label class="setting-row"><span><span class="setting-title">${t(label)}</span></span><input class="bot-number" type="number" min="0" data-bot-opt="${key}" value="${escape(v)}"></label>`; }).join('');
+  const q = (state.botOptQuery || '').toLowerCase();
+  const all = (opts || []).filter(o => !q || `${o.key} ${o.description}`.toLowerCase().includes(q)).slice(0, 60).map(o => lh`<div class="bot-opt"><div><strong>${escape(o.key.replace('AiPlayerbot.', ''))}</strong><small>${escape(o.description)}</small></div><input type="text" data-bot-opt="${escape(o.key)}" value="${escape(o.value)}" spellcheck="false"></div>`).join('');
+  const statsBox = !stats ? lh`<p class="page-description">${t('Start the server to see how many bots exist and which races they use.')}</p>`
+    : lh`<p class="page-description">${lt`${stats.total} bots, ${stats.online} online.`}</p><div class="bot-stats">${stats.races.map(r => lh`<span><strong>${escape(raceName(r.race))}</strong> ${r.count}</span>`).join('')}</div>`;
+  return lh`<div class="content-page">${titleBlock(t('SquidBots dashboard'), t('Settings are saved to your server and apply after a server restart.'), state.settings.modules?.squid ? 'SQUIDBOTS ON' : 'SQUIDBOTS OFF')}${tabs}<div class="button-row"><button class="secondary-button" data-action="coa-bot-refresh">${icon('refresh')}${t('Refresh')}</button><button class="secondary-button danger-button" data-action="coa-bots-reset-ask">${t('Reset bots')}</button></div>${statsBox}<h3 class="bot-heading">${t('Quick settings')}</h3><div class="bot-quick">${opts ? quick : lh`<p class="page-description">${t('Loading…')}</p>`}</div><h3 class="bot-heading">${t('All options')}</h3><label class="search-box">${icon('search')}<input id="bot-opt-search" type="text" placeholder="${t('Search options')}" value="${escape(state.botOptQuery || '')}"></label><div class="bot-opts">${all}</div></div>`;
+}
+async function loadBotDashboard() {
+  try { [state.botOpts, state.botStats] = await Promise.all([api.coaBotOptions(), api.coaBotStats().catch(() => null)]); await loadRaces(); }
+  catch (error) { toast(tm(error.message)); state.botOpts = []; }
+  if (state.page === 'bots' && state.botTab === 'dashboard') render();
 }
 async function loadBotRaces() {
   await loadRaces();
@@ -975,6 +1000,16 @@ async function chooseClient() {
   render(); if (state.page === 'addons') loadAddons(true);
   if (!client.installed) showInstall(); else toast(t('Client selected. Files will be checked before playing.'));
 }
+document.addEventListener('change', async event => {
+  const input = event.target.closest?.('[data-bot-opt]'); if (!input) return;
+  const value = input.dataset.kind === 'switch' ? (input.checked ? '1' : '0') : input.value;
+  try { await api.coaSetBotOption(input.dataset.botOpt, value); toast(t('Saved. Restart the server to apply.')); if (state.botOpts) { const o = state.botOpts.find(x => x.key === input.dataset.botOpt); if (o) o.value = value; } }
+  catch (error) { toast(tm(error.message)); }
+});
+document.addEventListener('input', event => {
+  if (event.target.id !== 'bot-opt-search') return;
+  state.botOptQuery = event.target.value; const at = event.target.selectionStart; render(); const box = document.getElementById('bot-opt-search'); box?.focus(); box?.setSelectionRange(at, at);
+});
 const actions = {
   minimize: () => api.window('minimize'), maximize: () => api.window('maximize'), close: () => api.window('close'),
   settings: () => showSettings('launcher'), 'game-settings': () => showSettings('game'),
@@ -1059,6 +1094,13 @@ const actions = {
     state.coaStatus = key === 'server' ? (result.upToDate ? t('Server is up to date.') : lt`Server updated to ${result.version}, ${result.applied} database updates applied.`) : lt`${moduleNames[key]} updated.`;
     state.coaUpdates = null; state.settings = await api.bootstrap().then(data => data.settings); render();
   }),
+  'coa-bot-tab': element => { state.botTab = element.dataset.tab; if (state.botTab === 'dashboard' && !state.botOpts) loadBotDashboard(); render(); },
+  'coa-bot-refresh': () => { state.botOpts = null; loadBotDashboard(); render(); },
+  'coa-bots-reset-ask': () => openModal(lh`${modalHeader(t('Reset all bots?'), '')}<div class="modal-body"><p>${t('This stops the server, deletes every bot with its guilds and arena teams, and restarts it once so the deletion can run (it can take several minutes). Your own characters are backed up first and are not touched. Start the server afterwards: new bots are created with your current race and level settings.')}</p></div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button danger-button" data-action="coa-bots-reset-go">${t('Reset bots')}</button></div>`, 'backup-dialog'),
+  'coa-bots-reset-go': async () => {
+    closeModal();
+    await coaRun(t('Resetting the bots…'), async () => { await api.coaResetBots(); state.coaStatus = t('Bots deleted. Start the server to create new ones.'); state.botStats = null; render(); });
+  },
   'coa-bots-all': () => { for (const box of main.querySelectorAll('[data-bot-race]:not(:disabled)')) box.checked = true; },
   'coa-bots-none': () => { for (const box of main.querySelectorAll('[data-bot-race]:not(:disabled)')) box.checked = false; },
   'coa-bots-save': async () => {

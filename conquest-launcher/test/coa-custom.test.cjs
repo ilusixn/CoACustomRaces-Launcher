@@ -112,3 +112,19 @@ test('account input and server deletion are validated before anything runs', asy
   await assert.rejects(coa.deleteServer(dir), /does not look like a CoA server/);
   assert.equal((await fs.readdir(dir)).length, 1, 'a non-server folder is left alone');
 });
+
+test('SquidBots options are listed with their comments and only known keys can be saved', async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'coa-opt-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const dir = path.join(root, 'Core/configs/modules');
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, 'playerbots.conf'), '# How many bots\n# at most\nAiPlayerbot.MaxRandomBots = 500\n\nAiPlayerbot.RandomBotAccountPrefix = "rndbot"\n');
+  const coa = new CoaCustom({ fetchImpl: null, notify: () => {} });
+  const list = await coa.botOptions(root);
+  assert.deepEqual(list.map(o => [o.key, o.value, o.description]), [['AiPlayerbot.MaxRandomBots', '500', 'How many bots at most'], ['AiPlayerbot.RandomBotAccountPrefix', 'rndbot', '']]);
+  await coa.setBotOption(root, 'AiPlayerbot.MaxRandomBots', 200);
+  await coa.setBotOption(root, 'AiPlayerbot.RandomBotAccountPrefix', 'bots');
+  assert.equal(await fs.readFile(path.join(dir, 'playerbots.conf'), 'utf8'), '# How many bots\n# at most\nAiPlayerbot.MaxRandomBots = 200\n\nAiPlayerbot.RandomBotAccountPrefix = "bots"\n');
+  await assert.rejects(coa.setBotOption(root, 'worldserver.Evil', 1), /Unknown SquidBots option/);
+  await assert.rejects(coa.setBotOption(root, 'AiPlayerbot.MaxRandomBots', '1\nX=2'), /not allowed/);
+});

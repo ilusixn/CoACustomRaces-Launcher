@@ -297,3 +297,13 @@ body.auth-locked .main-nav, body.auth-locked .utilitybar, body.auth-locked #main
 .danger-button{border-color:#c4584c !important;color:#ffd9d3 !important}
 .gold-button.danger-button{background:linear-gradient(108deg,#7a1f1f,#b53a33) !important}
 .acc-list{margin-top:10px;font-size:11px;color:#9fd8d3;word-break:break-word}
+
+.bot-heading{margin:22px 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#9fd8d3}
+.bot-quick{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:4px 24px}
+.bot-number{width:90px;text-align:right}
+.bot-stats{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.bot-stats span{padding:4px 9px;border:1px solid #49a39f66;border-radius:999px;font-size:11px;background:#10262880}
+.bot-opts{display:grid;gap:8px;margin-top:10px}
+.bot-opt{display:grid;grid-template-columns:1fr 220px;gap:14px;align-items:start;padding:9px 12px;border:1px solid #49a39f33;border-radius:8px;background:#0e1d1fb0}
+.bot-opt strong{display:block;font-size:12px;color:#e8fffb}
+.bot-opt small{display:block;margin-top:3px;font-size:10px;line-height:1.5;color:#a9c8c5;max-height:62px;overflow:hidden}
