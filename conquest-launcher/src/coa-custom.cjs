@@ -478,6 +478,55 @@ class CoaCustom {
     });
   }
 
+  // ---------- game accounts, delete server ----------
+
+  // AzerothCore SRP6: verifier = g^x mod N, x = SHA1(salt || SHA1(UPPER(user):UPPER(pass))), little-endian.
+  srp6(username, password, salt = crypto.randomBytes(32)) {
+    const N = BigInt('0x894B645E89E1535BBDAD5B8B290650530801B18EBFBF5E8FAB3C82872A3E9BB7');
+    const sha = (...parts) => crypto.createHash('sha1').update(Buffer.concat(parts)).digest();
+    const inner = sha(Buffer.from(`${username.toUpperCase()}:${password.toUpperCase()}`, 'utf8'));
+    const x = BigInt('0x' + Buffer.from(sha(salt, inner)).reverse().toString('hex'));
+    let result = 1n, base = 7n, exp = x;
+    for (; exp > 0n; exp >>= 1n, base = (base * base) % N) if (exp & 1n) result = (result * base) % N;
+    const verifier = Buffer.from(result.toString(16).padStart(64, '0'), 'hex').reverse();
+    return { salt, verifier };
+  }
+
+  async createAccount(root, { username, password, gm }) {
+    const name = String(username || '').trim();
+    if (!/^[A-Za-z0-9]{2,16}$/.test(name)) throw new Error('The account name needs 2 to 16 letters or digits.');
+    if (typeof password !== 'string' || password.length < 4 || password.length > 16) throw new Error('The password needs 4 to 16 characters (the game limit).');
+    return this.exclusive(() => this.withDatabase(root, async () => {
+      const upper = name.toUpperCase();
+      if ((await this.sql(root, `SELECT COUNT(*) FROM acore_auth.account WHERE username='${upper}';`)).trim() !== '0') throw new Error('That account name is already taken.');
+      const { salt, verifier } = this.srp6(upper, password);
+      await this.sql(root, `INSERT INTO acore_auth.account (username, salt, verifier, expansion, email, reg_mail) VALUES ('${upper}', 0x${salt.toString('hex')}, 0x${verifier.toString('hex')}, 2, '', '');`);
+      if (gm) {
+        const columns = (await this.sql(root, "SELECT column_name FROM information_schema.columns WHERE table_schema='acore_auth' AND table_name='account_access';")).split(/\s+/);
+        const idCol = columns.includes('AccountID') ? 'AccountID' : 'id', levelCol = columns.includes('SecurityLevel') ? 'SecurityLevel' : 'gmlevel';
+        await this.sql(root, `INSERT INTO acore_auth.account_access (${idCol}, ${levelCol}, RealmID) SELECT id, 3, -1 FROM acore_auth.account WHERE username='${upper}';`);
+      }
+      return { username: upper, gm: !!gm };
+    }));
+  }
+
+  async listAccounts(root) {
+    return this.withDatabase(root, async () => (await this.sql(root, 'SELECT username FROM acore_auth.account ORDER BY id;')).split(/\r?\n/).map(s => s.trim()).filter(Boolean));
+  }
+
+  // Stops the server and deletes its whole folder (characters and the launcher's backups live inside it).
+  async deleteServer(root) {
+    return this.exclusive(async () => {
+      if (!fs.existsSync(path.join(root, 'Scripts/manage.py')) || !fs.existsSync(path.join(root, 'Core'))) throw new Error('That folder does not look like a CoA server, so it was not deleted.');
+      if (path.dirname(root) === root) throw new Error('Refusing to delete a drive root.');
+      this.emit('server', 'Stopping the server…');
+      await this.manage(root, 'stop-all').catch(() => {});
+      this.emit('server', 'Deleting the server folder…');
+      await fsp.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+      this.emit('ready', 'Server deleted.');
+    });
+  }
+
   // ---------- troubleshooting ----------
 
   async portBusy(port) {

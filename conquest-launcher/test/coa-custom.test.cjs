@@ -92,3 +92,23 @@ test('new settings are sanitized', () => {
   assert.deepEqual(s.customOwned, ['Data/patch-T.MPQ']);
   assert.equal(sanitize({ realmlist: "1.1.1.1'--" }).realmlist, '127.0.0.1');
 });
+
+test('account passwords: SRP6 verifier is 32 bytes, case-insensitive and salt-bound', () => {
+  const coa = new CoaCustom({ fetchImpl: null, notify: () => {} });
+  const salt = Buffer.alloc(32, 7);
+  const a = coa.srp6('Tester', 'Secret1', salt), b = coa.srp6('TESTER', 'secret1', salt), c = coa.srp6('Tester', 'Other', salt);
+  assert.equal(a.verifier.length, 32);
+  assert.deepEqual(a.verifier, b.verifier);
+  assert.notDeepEqual(a.verifier, c.verifier);
+});
+
+test('account input and server deletion are validated before anything runs', async t => {
+  const coa = new CoaCustom({ fetchImpl: null, notify: () => {} });
+  await assert.rejects(coa.createAccount('x', { username: 'a b', password: 'secret' }), /2 to 16 letters/);
+  await assert.rejects(coa.createAccount('x', { username: 'Tester', password: 'abc' }), /4 to 16 characters/);
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'coa-del-'));
+  t.after(() => fs.rm(dir, { recursive: true, force: true }));
+  await fs.writeFile(path.join(dir, 'keep.txt'), 'x');
+  await assert.rejects(coa.deleteServer(dir), /does not look like a CoA server/);
+  assert.equal((await fs.readdir(dir)).length, 1, 'a non-server folder is left alone');
+});

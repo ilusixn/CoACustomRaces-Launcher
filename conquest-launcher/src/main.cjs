@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Duff (Duff-SPP). GPL-3.0-only; see LICENSE and ATTRIBUTION.md at the repository root.
 const { app, BrowserWindow, WebContentsView, ipcMain, dialog, shell, protocol, net, session, safeStorage, nativeImage } = require('electron');
 const path = require('node:path');
+const os = require('node:os');
 const fs = require('node:fs/promises');
 const { launchGame, applyLauncherLaunchBehavior } = require('./game-launch.cjs');
 const { pathToFileURL } = require('node:url');
@@ -685,6 +686,27 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
   handle('coa:troubleshoot', async () => {
     const info = await clientInfo();
     return coa.troubleshoot({ serverPath: settings.serverPath, clientPath: info.path || '', realmlist: settings.realmlist, realmMode: settings.realmMode, modules: settings.modules, versions: settings.versions });
+  });
+  // ---- accounts and deleting ----
+  handle('coa:accounts', async () => coa.listAccounts(await requireServer()));
+  handle('coa:create-account', async data => coa.createAccount(await requireServer(), { username: data?.username, password: data?.password, gm: data?.gm === true }));
+  handle('coa:delete-server', async () => {
+    const root = await requireServer();
+    await coa.deleteServer(root);
+    await persist({ ...settings, serverPath: '', versions: { ...settings.versions, server: '' } });
+    return true;
+  });
+  handle('coa:delete-client', async () => {
+    if (game) throw new Error('Close the game before deleting the client.');
+    const info = await clientInfo();
+    if (!info.installed || !info.path) throw new Error('No game client is installed.');
+    const dir = path.resolve(info.path);
+    // Only a folder that is clearly a game client, never a drive root or a home folder.
+    if (path.dirname(dir) === dir || dir === path.resolve(os.homedir()) || !(await fs.stat(path.join(dir, 'Data')).catch(() => null)) || !(await fs.stat(path.join(dir, 'Ascension.exe')).catch(() => null) || await fs.stat(path.join(dir, 'CoACustomRace.exe')).catch(() => null))) throw new Error('That folder does not look like a game client, so it was not deleted.');
+    await requireGameClosed(dir);
+    await mutateClient(() => fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 }));
+    await persist({ ...settings, modules: { squid: false, devMenu: false, races: false }, customOwned: [], versions: { ...settings.versions, squid: '', devMenu: '', races: '' } });
+    return true;
   });
   // ---- races and bot races ----
   handle('coa:races', () => coa.races());

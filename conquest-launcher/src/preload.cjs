@@ -76,6 +76,7 @@ contextBridge.exposeInMainWorld('launcher', Object.freeze({
   coaUpdates: () => invoke('coa:updates'),
   coaUpdateServer: () => invoke('coa:update-server'),
   coaUpdateModule: key => invoke('coa:update-module', key),
+  coaAccounts: () => invoke('coa:accounts'), coaCreateAccount: data => invoke('coa:create-account', data), coaDeleteServer: () => invoke('coa:delete-server'), coaDeleteClient: () => invoke('coa:delete-client'),
   coaRaces: () => invoke('coa:races'),
   coaBotRaces: () => invoke('coa:bot-races'),
   coaSetBotRaces: allowed => invoke('coa:set-bot-races', allowed),
