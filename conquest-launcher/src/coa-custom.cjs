@@ -159,6 +159,7 @@ class CoaCustom {
       // The package's scripts render their config from Settings/database.json at first start.
       await fsp.copyFile(path.join(staging, 'Settings/database.bootstrap.json'), path.join(staging, 'Settings/database.json'));
       await this.materializeModuleConfigs(staging);
+      await this.disableCompanions(staging);
       await fsp.rm(dest, { recursive: true, force: true });
       await fsp.rename(staging, dest);
       await fsp.rm(dest + '.download', { recursive: true, force: true });
@@ -176,6 +177,9 @@ class CoaCustom {
       if (!fs.existsSync(active)) await fsp.copyFile(path.join(dir, name), active);
     }
   }
+
+  // CoA Companions refuses to run next to SquidBots and this launcher does not offer it, so it is always off.
+  async disableCompanions(root) { await this.setConf(root, 'mod_coa_playerbots.conf', 'CoaBots.Enable', 0).catch(() => {}); }
 
   async setConf(root, file, key, value) {
     const target = path.join(root, 'Core/configs/modules', file);
@@ -226,6 +230,7 @@ class CoaCustom {
   async startServer(root, realmAddress) {
     return this.exclusive(async () => {
       this.emit('server', 'Starting the server (first start can take several minutes)…');
+      await this.disableCompanions(root);
       await this.manage(root, 'start-all');
       // start-all resets the realm address to 127.0.0.1; put the chosen one back (authserver re-reads it within seconds).
       if (realmAddress && realmAddress !== '127.0.0.1') await this.setRealmAddress(root, realmAddress);
@@ -566,7 +571,7 @@ class CoaCustom {
 
   async botRaces(root) {
     const ids = value => (value || '').split(/[,\s]+/).filter(Boolean).map(Number).filter(Number.isInteger);
-    return { excluded: ids(await this.readConf(root, 'playerbots.conf', 'AiPlayerbot.ExcludedBotRaces')), crashing: ids(await this.readConf(root, 'playerbots.conf', 'AiPlayerbot.CrashingBotRaces')) };
+    return { excluded: ids(await this.readConf(root, 'playerbots.conf', 'AiPlayerbot.ExcludedBotRaces')), crashing: ids(await this.readConf(root, 'playerbots.conf', 'AiPlayerbot.CrashingBotRaces')).filter(id => !SABERON_IDS.includes(id)) };
   }
 
   // allowed = race ids bots may spawn as; every other known race is excluded.
@@ -575,10 +580,15 @@ class CoaCustom {
     if (!allow.size) throw new Error('Pick at least one race for the bots.');
     // Test Race (65) is not a real race and is never offered to bots.
     const excluded = [...new Set([...known.filter(id => !allow.has(id)), 65])];
+    const crash = (await this.readConf(root, 'playerbots.conf', 'AiPlayerbot.CrashingBotRaces') || '').split(/[,\s]+/).filter(id => id && !SABERON_IDS.includes(Number(id)));
+    await this.setConf(root, 'playerbots.conf', 'AiPlayerbot.CrashingBotRaces', `"${crash.join(',')}"`);
     await this.setConf(root, 'playerbots.conf', 'AiPlayerbot.ExcludedBotRaces', `"${excluded.join(',')}"`);
     await this.setConf(root, 'coa_custom_races.conf', 'CoACustomRaces.BotsEnable', [...allow].some(id => id > 11) ? 1 : 0);
     return { excluded };
   }
 }
+
+// shortcut: Saberon id is hard-coded (moved 84->97 for Alliance rep); read it from RACES.md if it moves again.
+const SABERON_IDS = [97];
 
 module.exports = { CoaCustom, networkAddresses, hostnameOk, parseRaces, SOURCES };
