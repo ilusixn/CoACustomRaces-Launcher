@@ -1,5 +1,5 @@
 {
-  "name": "Conquest of AzerothCore",
+  "name": "CoA Custom Races",
   "clientExecutable": "Ascension.exe",
   "websiteUrl": "https://coa-development.org/",
   "apiBaseUrl": "https://launcher-api.coa-development.org/",
@@ -7,7 +7,7 @@
     "guildId": "1546991088751874168",
     "inviteUrl": "https://discord.gg/UV4engmU96"
   },
-  "realmlist": "logon.coa-development.org",
+  "realmlist": "127.0.0.1",
   "links": {
     "account": "https://launcher-api.coa-development.org/#account",
     "register": "https://launcher-api.coa-development.org/#register",
@@ -18,17 +18,17 @@
     "discord": "https://discord.gg/UV4engmU96",
     "support": "",
     "trailer": "",
-    "bugtracker": "https://github.com/jealous-sound/azerothcore-wotlk-coa/issues",
-    "source": "https://github.com/Duff-SPP/ConquestOfAzerothCoreLauncher"
+    "bugtracker": "https://github.com/ilusixn/CustomRacesCoa/issues",
+    "source": "https://github.com/ilusixn/CoACustomRaces-Launcher"
   },
   "databaseEmbedUrl": "https://ascension-db.ascension-archive.workers.dev/",
   "bugtracker": {
-    "repository": "jealous-sound/azerothcore-wotlk-coa",
+    "repository": "ilusixn/CustomRacesCoa",
     "submitUrl": ""
   },
   "manifestUrl": "https://launcher-api.coa-development.org/downloads/client/latest.json",
   "newsUrl": "",
-  "launcherUpdateUrl": "https://launcher-api.coa-development.org/downloads/launcher/",
+  "launcherUpdateUrl": "https://github.com/ilusixn/CoACustomRaces-Launcher/releases/latest",
   "mandatoryAddons": [],
   "mandatoryAssetFolders": []
 }

@@ -242,3 +242,23 @@ body.auth-locked .main-nav, body.auth-locked .utilitybar, body.auth-locked #main
 .auth-card small { display: block; color: #8b7b6c; margin-top: 24px; }
 
 .legal-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.6; max-height: 55vh; overflow: auto; }
+/* CoA Custom Races additions */
+.coa-panel{margin-top:14px;padding:12px;border:1px solid #99653db3;border-radius:10px;background:#160e0dc4;display:flex;flex-direction:column;gap:8px}
+.coa-row{display:flex;align-items:center;gap:10px;font-size:11px}
+.coa-title{display:flex;align-items:center;gap:6px;font-weight:600;color:#f3d6a0;min-width:86px}
+.coa-title svg{width:14px;height:14px}
+.coa-path{color:#c9b39a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.coa-buttons{display:flex;gap:8px;flex-wrap:wrap}
+.coa-buttons button{padding:8px 12px}
+.coa-buttons svg{width:13px;height:13px}
+.coa-status{font-size:10px;color:#e0c79d;min-height:14px;line-height:1.4}
+.coffee-card{display:flex;align-items:center;gap:12px;border:1px solid #e0a34f;background:linear-gradient(108deg,#ffdd00e0,#f5b400d9);color:#2b1a05;border-radius:12px;padding:10px 14px;text-align:left}
+.coffee-card:hover{filter:brightness(1.08)}
+.coffee-card strong{display:block;font-size:13px}
+.coffee-card small{display:block;font-size:9px;opacity:.8}
+.coffee-card svg{margin-left:auto;width:14px;height:14px}
+.coffee-cup{font-size:22px;line-height:1}
+.realm-option{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #a8814e26;cursor:pointer}
+.realm-option input{margin-top:3px;accent-color:#c99550}
+#realm-address{width:100%;margin-bottom:6px}
+.link-button{color:#e2b36f;text-decoration:underline;text-underline-offset:2px;padding:0;font-size:inherit}

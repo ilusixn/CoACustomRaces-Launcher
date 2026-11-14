@@ -18,6 +18,7 @@ const { Portal } = require('./portal.cjs');
 const { GameCredentials } = require('./game-credentials.cjs');
 const { requireGameClosed, isGameRunning, configureRealm } = require('./game-safety.cjs');
 const { createLauncherUpdates } = require('./launcher-updates.cjs');
+const { CoaCustom, networkAddresses, hostnameOk } = require('./coa-custom.cjs');
 const localTesting = !app.isPackaged && process.env.COA_LOCAL_TEST === '1';
 const electronFetch = (input, init) => net.fetch(input, init);
 config.localDownloadDemo = localTesting && process.env.COA_DOWNLOAD_DEMO === '1';
@@ -55,8 +56,8 @@ function writableClient(directory) {
   }
 }
 
-app.setName('Conquest of AzerothCore');
-if (process.platform === 'win32') app.setAppUserModelId('com.conquestofazerothcore.launcher');
+app.setName('CoA Custom Races');
+if (process.platform === 'win32') app.setAppUserModelId('com.ilusixn.coacustomraces.launcher');
 protocol.registerSchemesAsPrivileged([{ scheme: 'conquest', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 
 let window = null;
@@ -128,7 +129,8 @@ function handle(name, action) {
       throw new Error('Untrusted launcher request.');
     }
     try {
-      if (['launcher:client-check', 'launcher:client-update', 'launcher:launch', 'launcher:choose-client', 'launcher:choose-install'].includes(name) && !await portal.account()) {
+      // Local mode (own server, LAN, Hamachi) does not need a coa-development.org account.
+      if (['launcher:client-check', 'launcher:client-update', 'launcher:launch', 'launcher:choose-client', 'launcher:choose-install'].includes(name) && !settings.localMode && !await portal.account()) {
         await gameCredentials.write(null);
         throw new Error('Please sign in with your game account.');
       }
@@ -151,11 +153,12 @@ async function clientInfo() {
   let detectionError = '';
   try { running ||= await isGameRunning(directory); } catch (error) { detectionError = error.message; }
   const executable = path.join(directory, path.basename(config.clientExecutable));
+  const customExecutable = settings.modules?.races ? await fs.stat(path.join(directory, 'CoACustomRace.exe')).then(s => s.isFile()).catch(() => false) : false;
   let folderAvailable = false;
   try {
     folderAvailable = (await fs.stat(directory)).isDirectory();
     const stat = await fs.stat(executable);
-    return { installed: stat.isFile(), addonsReady: stat.isFile() || localTesting, running, detectionError, path: directory };
+    return { installed: stat.isFile(), addonsReady: stat.isFile() || localTesting, running, detectionError, path: directory, executable: customExecutable ? 'CoACustomRace.exe' : path.basename(config.clientExecutable) };
   } catch (error) {
     return { installed: false, addonsReady: localTesting && folderAvailable && error.code === 'ENOENT', running, detectionError, path: directory, error: error.code === 'ENOENT' ? '' : `Client folder is unavailable: ${error.message}` };
   }
@@ -369,7 +372,7 @@ async function main() {
   settings = await readSettings(settingsFile, message => dialog.showErrorBox(nativeText('Settings recovered'), message));
   const addonCatalogRoot = app.isPackaged ? path.join(process.resourcesPath, 'AddonCatalog') : path.resolve(__dirname, 'assets/AddonCatalog');
   addonService = new AddonService(addonCatalogRoot, { mandatoryFolders: config.mandatoryAddons || [], assetFolders: config.mandatoryAssetFolders || [] });
-  clientUpdater = new ClientUpdater(config.manifestUrl, { fetchImpl: electronFetch, downloadLimit: () => settings.downloadLimitMBps * 1024 ** 2, graphicsCompatibility: file => file === 'dxgi.dll' ? settings.disableGraphicsEnhancements === true : settings.graphicsCompatibility === true, allowLocalHttp: localTesting, notify: status => sendStatus('launcher:client-progress', status), beforeApply: async () => { if (game || clientMutation) throw new Error('Wait for the game or addon operation to finish.'); await requireGameClosed(settings?.installPath); } });
+  clientUpdater = new ClientUpdater(config.manifestUrl, { fetchImpl: electronFetch, downloadLimit: () => settings.downloadLimitMBps * 1024 ** 2, graphicsCompatibility: file => file === 'dxgi.dll' ? settings.disableGraphicsEnhancements === true : settings.graphicsCompatibility === true, preserveFile: file => settings.customOwned.some(owned => owned.toLowerCase() === file.toLowerCase()), allowLocalHttp: localTesting, notify: status => sendStatus('launcher:client-progress', status), beforeApply: async () => { if (game || clientMutation) throw new Error('Wait for the game or addon operation to finish.'); await requireGameClosed(settings?.installPath); } });
   launcherUpdates = createLauncherUpdates(app, status => sendStatus('launcher:update-status', status), async () => {
     if (clientUpdater?.busy || clientMutation) throw new Error('Wait for the current client operation to finish before restarting.');
   });
@@ -503,7 +506,7 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new Error('Invalid settings.');
     if (Object.hasOwn(patch, 'downloadLimitMBps') && (typeof patch.downloadLimitMBps !== 'number' || !Number.isFinite(patch.downloadLimitMBps) || !(patch.downloadLimitMBps === 0 || patch.downloadLimitMBps >= 0.1 && patch.downloadLimitMBps <= 10000))) throw new Error('Enter 0 for unlimited, or a speed between 0.1 and 10000 MB/s.');
     const next = { ...settings };
-    for (const key of ['language', 'startPage', 'launchBehavior', 'autoLaunchAfterUpdate', 'addonCleanupDismissed', 'rememberClient', 'hdPatches', 'wineCompatibility', 'autoLoginGame', 'downloadLimitMBps', 'graphicsCompatibility', 'disableGraphicsEnhancements', 'reducedMotion', 'sound']) {
+    for (const key of ['language', 'startPage', 'launchBehavior', 'autoLaunchAfterUpdate', 'addonCleanupDismissed', 'rememberClient', 'hdPatches', 'wineCompatibility', 'autoLoginGame', 'downloadLimitMBps', 'graphicsCompatibility', 'disableGraphicsEnhancements', 'reducedMotion', 'sound', 'localMode']) {
       if (Object.hasOwn(patch, key)) next[key] = patch[key];
     }
     if (Object.hasOwn(patch, 'language') && ['en', 'fr', 'es-ES', 'ru', 'zh-CN'].includes(patch.language)) next.languageSelected = true;
@@ -526,7 +529,7 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     }
     await mutateClient(async () => {
       await clearClientCache(info.path);
-      await configureRealm(info.path, config.realmlist);
+      await configureRealm(info.path, settings.localMode ? settings.realmlist : config.realmlist);
     });
 
     const credentialVersion = settings.autoLoginGame ? gameCredentials.version : 0;
@@ -544,7 +547,7 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     const launched = {};
     game = launched;
     try {
-      launched.pid = await launchGame(path.join(info.path, path.basename(config.clientExecutable)), { hdPatches: settings.hdPatches, wineCompatibility: settings.wineCompatibility, getAutoLogin: () => {
+      launched.pid = await launchGame(path.join(info.path, info.executable || path.basename(config.clientExecutable)), { hdPatches: settings.hdPatches, wineCompatibility: settings.wineCompatibility, getAutoLogin: () => {
         if (!settings.autoLoginGame) return null;
         if (credentialVersion !== gameCredentials.version) throw new Error('Sign into the launcher again to use automatic game login.');
         const credentials = portal.getGameLogin() || savedGameLogin;
@@ -638,6 +641,60 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     await fs.mkdir(folder, { recursive: true });
     const result = await shell.openPath(folder);
     if (result) throw new Error(result);
+  });
+
+  // ---- CoA Custom Races: server, modules and realmlist ----
+  const coa = new CoaCustom({ fetchImpl: electronFetch, notify: status => sendStatus('coa:progress', status) });
+  const requireServer = async () => {
+    if (!settings.serverPath || !(await fs.stat(path.join(settings.serverPath, 'Scripts/manage.py')).catch(() => null))) throw new Error('Create or locate your server first.');
+    return settings.serverPath;
+  };
+  const realmAddress = () => settings.realmMode === 'local' ? '127.0.0.1' : settings.realmlist;
+  handle('coa:network', () => networkAddresses());
+  handle('coa:create-server', async () => {
+    const result = await dialog.showOpenDialog(window, { title: nativeText('Choose an EMPTY folder for your server (about 15 GB)'), properties: ['openDirectory', 'createDirectory'] });
+    if (result.canceled || !result.filePaths[0]) return null;
+    const created = await coa.createServer(result.filePaths[0]);
+    await persist({ ...settings, serverPath: created.path, localMode: true });
+    return created;
+  });
+  handle('coa:locate-server', async () => {
+    const result = await dialog.showOpenDialog(window, { title: nativeText('Choose your CoA server folder'), properties: ['openDirectory'] });
+    if (result.canceled || !result.filePaths[0]) return null;
+    if (!(await fs.stat(path.join(result.filePaths[0], 'Scripts/manage.py')).catch(() => null))) throw new Error('That folder is not a CoA server (Scripts/manage.py is missing).');
+    await persist({ ...settings, serverPath: result.filePaths[0], localMode: true });
+    return { path: settings.serverPath };
+  });
+  handle('coa:start-server', async () => coa.startServer(await requireServer(), realmAddress()));
+  handle('coa:stop-server', async () => coa.stopServer(await requireServer()));
+  handle('coa:apply-modules', async choice => {
+    if (!choice || typeof choice !== 'object') throw new Error('Invalid module choice.');
+    const modules = { squid: choice.squid === true, devMenu: choice.devMenu === true, races: choice.races === true };
+    if (game) throw new Error('Close the game before applying modules.');
+    const info = await clientInfo();
+    if (!info.installed && (modules.squid || modules.devMenu || modules.races)) throw new Error('Download or locate the game client first.');
+    if (info.installed) { writableClient(info.path); await requireGameClosed(info.path); }
+    const result = await mutateClient(() => coa.applyModules({ serverPath: settings.serverPath, clientPath: info.installed ? info.path : '', ...modules }));
+    await persist({ ...settings, modules, customOwned: modules.races ? result.owned : [] });
+    return result;
+  });
+  handle('coa:set-realm', async (mode, address) => {
+    if (!['local', 'lan', 'hamachi', 'custom'].includes(mode)) throw new Error('Unknown realm mode.');
+    const value = mode === 'local' ? '127.0.0.1' : String(address || '').trim();
+    if (!hostnameOk(value)) throw new Error('Enter a valid IP address or host name.');
+    await persist({ ...settings, realmMode: mode, realmlist: value, localMode: true });
+    // Hosting: tell the running server which address to hand out. Joining someone else: the client realmlist is enough.
+    let server = 'not hosting';
+    if (mode !== 'custom' && settings.serverPath) {
+      try { await coa.setRealmAddress(settings.serverPath, value); server = 'updated'; }
+      catch { server = 'applies at next server start'; }
+    }
+    return { realmlist: value, server };
+  });
+  handle('coa:open', async key => {
+    const urls = { coffee: 'https://buymeacoffee.com/ilusixne', duff: 'https://github.com/Duff-SPP/ConquestOfAzerothCoreLauncher', races: 'https://github.com/ilusixn/CustomRacesCoa/releases/tag/coa-custom-2.0', devmenu: 'https://github.com/ilusixn/ilusixn-dev-menu/releases/latest', squid: 'https://github.com/Zyth45/squidbots-addon', hamachi: 'https://vpn.net/' };
+    if (!Object.hasOwn(urls, key)) throw new Error('Unknown link.');
+    await shell.openExternal(urls[key]);
   });
 
   await window.loadURL(appUrl);

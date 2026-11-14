@@ -1,9 +1,9 @@
 {
-  "name": "conquest-of-azerothcore-launcher",
-  "version": "0.8.1",
+  "name": "coa-custom-races-launcher",
+  "version": "1.0.0",
   "private": true,
-  "description": "Conquest of AzerothCore desktop launcher",
-  "author": "Duff (Duff-SPP)",
+  "description": "CoA Custom Races launcher (fork of Conquest Launcher by Duff)",
+  "author": "Duff (Duff-SPP); CoA Custom Races changes by ilusixn",
   "main": "src/main.cjs",
   "scripts": {
     "start": "electron .",
@@ -27,13 +27,14 @@
     "resedit": "1.7.2"
   },
   "build": {
-    "appId": "com.conquestofazerothcore.launcher",
-    "productName": "Conquest of AzerothCore",
-    "executableName": "ConquestOfAzeroth",
+    "appId": "com.ilusixn.coacustomraces.launcher",
+    "productName": "CoA Custom Races",
+    "executableName": "CoACustomRacesLauncher",
     "publish": [
       {
-        "provider": "generic",
-        "url": "https://launcher-api.coa-development.org/downloads/launcher/"
+        "provider": "github",
+        "owner": "ilusixn",
+        "repo": "CoACustomRaces-Launcher"
       }
     ],
     "nsis": {
@@ -42,7 +43,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Conquest of AzerothCore",
+      "shortcutName": "CoA Custom Races",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true,
       "script": "build/safe-installer.nsi",
@@ -74,7 +75,7 @@
     "asar": true,
     "win": {
       "target": "nsis",
-      "artifactName": "ConquestOfAzerothSetup-${version}.${ext}",
+      "artifactName": "CoACustomRacesSetup-${version}.${ext}",
       "icon": "public/assets/app-icon.ico",
       "requestedExecutionLevel": "asInvoker",
       "signAndEditExecutable": true,

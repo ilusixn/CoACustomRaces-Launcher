@@ -60,6 +60,19 @@ contextBridge.exposeInMainWorld('launcher', Object.freeze({
     ipcRenderer.on('launcher:database-status', listener);
     return () => ipcRenderer.removeListener('launcher:database-status', listener);
   },
+  coaNetwork: () => invoke('coa:network'),
+  coaCreateServer: () => invoke('coa:create-server'),
+  coaLocateServer: () => invoke('coa:locate-server'),
+  coaStartServer: () => invoke('coa:start-server'),
+  coaStopServer: () => invoke('coa:stop-server'),
+  coaApplyModules: choice => invoke('coa:apply-modules', choice),
+  coaSetRealm: (mode, address) => invoke('coa:set-realm', mode, address),
+  coaOpen: key => invoke('coa:open', key),
+  onCoaProgress: callback => {
+    const listener = (_event, status) => callback(status);
+    ipcRenderer.on('coa:progress', listener);
+    return () => ipcRenderer.removeListener('coa:progress', listener);
+  },
   onGameExit: callback => {
     const listener = () => callback();
     ipcRenderer.on('launcher:game-exit', listener);

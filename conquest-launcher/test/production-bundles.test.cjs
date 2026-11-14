@@ -59,9 +59,9 @@ test('production package retains update identity and safe installer while exclud
   const config = require('../package.json');
   assert.equal(config.main, 'src/main.cjs', 'development entry point remains readable');
   assert.equal(config.build.extraMetadata.main, 'runtime/a.cjs');
-  assert.equal(config.build.appId, 'com.conquestofazerothcore.launcher');
-  assert.equal(config.build.executableName, 'ConquestOfAzeroth');
-  assert.equal(config.build.publish[0].url, 'https://launcher-api.coa-development.org/downloads/launcher/');
+  assert.equal(config.build.appId, 'com.ilusixn.coacustomraces.launcher');
+  assert.equal(config.build.executableName, 'CoACustomRacesLauncher');
+  assert.deepEqual(config.build.publish[0], { provider: 'github', owner: 'ilusixn', repo: 'CoACustomRaces-Launcher' });
   assert.equal(config.build.nsis.deleteAppDataOnUninstall, false);
   assert.equal(config.build.nsis.script, 'build/safe-installer.nsi');
   assert.equal(config.build.beforePack, 'tools/production-bundles.cjs');

@@ -8,7 +8,8 @@ const { DownloadThrottle } = require('./download-throttle.cjs');
 const { validateManifest, requireCompatibleLauncher, runtimePath, statOrNull, safePath, hashFile, atomicJson } = require('./release-format.cjs');
 
 class ClientUpdater {
-  constructor(manifestUrl, { fetchImpl = fetch, notify = () => {}, beforeApply = async () => {}, graphicsCompatibility = () => false, downloadLimit = () => 0, allowLocalHttp = false, launcherVersion = require('../package.json').version } = {}) {
+  constructor(manifestUrl, { fetchImpl = fetch, notify = () => {}, beforeApply = async () => {}, graphicsCompatibility = () => false, preserveFile = () => false, downloadLimit = () => 0, allowLocalHttp = false, launcherVersion = require('../package.json').version } = {}) {
+    this.preserveFile = preserveFile;
     this.url = new URL(manifestUrl);
     if (this.url.protocol !== 'https:' && !(allowLocalHttp && this.url.hostname === '127.0.0.1')) throw new Error('Client releases require HTTPS.');
     this.fetch = fetchImpl; this.notify = notify; this.beforeApply = beforeApply;
@@ -136,7 +137,8 @@ class ClientUpdater {
       const trusted = !mandatoryDll && !force && !fullScan && cached?.sha256 === file.sha256 && stat?.size === file.size && cached.mtimeMs === stat.mtimeMs && cached.ctimeMs === stat.ctimeMs;
       const matches = trusted || (stat?.size === file.size && await hashFile(target, signal) === file.sha256);
       // Extensions.dll is required client code, not an optional graphics customization.
-      const preserve = alternate || (!force && !mandatoryDll && stat && /\.dll$/i.test(file.path) && !matches);
+      // CoA Custom Races: files replaced by an applied module stay until an explicit Repair.
+      const preserve = alternate || (!force && !mandatoryDll && stat && !matches && (/\.dll$/i.test(file.path) || this.preserveFile(file.path)));
       if (preserve) warnings.push(`Kept player customization: ${file.path}`);
       else if (!matches) changes.push(file);
       current.push({ ...file, mtimeMs: stat?.mtimeMs, ctimeMs: stat?.ctimeMs });

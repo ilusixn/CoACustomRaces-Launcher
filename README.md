@@ -1,3 +1,23 @@
+# CoA Custom Races Launcher
+
+**Modified version** of Conquest Launcher, originally developed by **Duff (Duff-SPP)**:
+https://github.com/Duff-SPP/ConquestOfAzerothCoreLauncher. Changed by ilusixn, November 2026. GPL-3.0-only, with the
+attribution terms in [ATTRIBUTION.md](ATTRIBUTION.md).
+
+What this edition adds (code in `conquest-launcher/src/coa-custom.cjs`):
+
+* **Original client**: still downloads and updates the game client from the original Conquest of AzerothCore release service.
+* **Create server**: downloads the latest public CoA server build ([Corfirean/coa-server-build](https://github.com/Corfirean/coa-server-build)), checks every part's SHA-256, unpacks it and prepares its configuration. **Start** / **Stop** use the server's own `Scripts/manage.py`.
+* **Apply modules**: on/off switches for
+  * **SquidBots**: SQUID Playerbots (always the version shipped with the latest server) plus the latest [SquidBots addon](https://github.com/Zyth45/squidbots-addon). Off = no bots.
+  * **ilusixn Dev Menu**: the [/dev addon](https://github.com/ilusixn/ilusixn-dev-menu). Its server module needs a worldserver built with it.
+  * **CoA Custom Races V2**: turns custom races on in the server and installs the [V2 client files](https://github.com/ilusixn/CustomRacesCoa/releases/tag/coa-custom-2.0); the game then starts with `CoACustomRace.exe`.
+* **Realmlist**: Local, LAN, LogMeIn Hamachi (addresses detected automatically) or Join a friend. Hosting also sets the realm address the server hands out.
+* **Play on my own server**: no coa-development.org account needed.
+* **Buy me a coffee**: https://buymeacoffee.com/ilusixne
+
+---
+
 # Conquest Launcher
 
 [![Stars](https://img.shields.io/github/stars/Duff-SPP/ConquestOfAzerothCoreLauncher?style=flat)](https://github.com/Duff-SPP/ConquestOfAzerothCoreLauncher/stargazers)
