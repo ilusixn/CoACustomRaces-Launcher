@@ -975,5 +975,8 @@
   "Saved. Restart the server to apply.": "Guardado. Reinicia el servidor para aplicar.",
   "Before a bot reset": "Antes de reiniciar los bots",
   "Unknown SquidBots option.": "Opción de SquidBots desconocida.",
-  "That value is not allowed.": "Ese valor no está permitido."
+  "That value is not allowed.": "Ese valor no está permitido.",
+  "Bots use custom races": "Los bots usan razas personalizadas",
+  "Auto update before playing": "Actualizar antes de jugar",
+  "Untick to play your current version without updating.": "Desmarca para jugar con tu versión actual sin actualizar."
 }

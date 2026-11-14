@@ -284,6 +284,8 @@ class CoaCustom {
       if (serverPath && !only) {
         await this.setConf(serverPath, 'playerbots.conf', 'AiPlayerbot.Enabled', squid ? 1 : 0);
         await this.setConf(serverPath, 'coa_custom_races.conf', 'CoACustomRaces.Enable', races ? 1 : 0);
+        // The module ships with BotsEnable = 0, which keeps every bot on the standard races.
+        await this.setConf(serverPath, 'coa_custom_races.conf', 'CoACustomRaces.BotsEnable', races && squid ? 1 : 0);
       }
       if (want('squid') && addons) versions.squid = await this.installAddon(SOURCES.squidAddon, /\.zip$/i, 'SquidBots addon', addons);
       if (want('devMenu') && addons) versions.devMenu = await this.installAddon(SOURCES.devMenu, /addon.*\.zip$/i, 'Dev Menu addon', addons);
@@ -540,6 +542,8 @@ class CoaCustom {
       else if (/^#/.test(line)) notes.push(line.replace(/^#+\s?/, '').trim());
       else notes = [];
     }
+    const custom = await this.readConf(root, 'coa_custom_races.conf', 'CoACustomRaces.BotsEnable');
+    options.unshift({ key: 'CoACustomRaces.BotsEnable', value: custom ?? '0', quoted: false, description: 'Let bots spawn as the custom races. Off = bots only use the standard races.' });
     return options;
   }
 
@@ -548,7 +552,7 @@ class CoaCustom {
     if (!known) throw new Error('Unknown SquidBots option.');
     const text = String(value);
     if (/[\r\n"]/.test(text) || text.length > 300) throw new Error('That value is not allowed.');
-    await this.setConf(root, 'playerbots.conf', key, known.quoted ? `"${text}"` : text);
+    await this.setConf(root, key.startsWith('CoACustomRaces.') ? 'coa_custom_races.conf' : 'playerbots.conf', key, known.quoted ? `"${text}"` : text);
     return { key, value: text };
   }
 
@@ -567,6 +571,7 @@ class CoaCustom {
       this.emit('server', 'Stopping the server…');
       await this.manage(root, 'stop-all').catch(() => {});
       await this.backupInternal(root, 'before-reset');
+      if ((await this.readConf(root, 'coa_custom_races.conf', 'CoACustomRaces.Enable')) === '1' && (await this.readConf(root, 'playerbots.conf', 'AiPlayerbot.Enabled')) === '1') await this.setConf(root, 'coa_custom_races.conf', 'CoACustomRaces.BotsEnable', 1);
       const flags = ['AiPlayerbot.DeleteRandomBotAccounts', 'AiPlayerbot.DeleteRandomBotGuilds', 'AiPlayerbot.DeleteRandomBotArenaTeams'];
       try {
         for (const flag of flags) await this.setConf(root, 'playerbots.conf', flag, 1);

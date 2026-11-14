@@ -282,7 +282,7 @@ actions.play = async () => {
   state.playPending = true;
   updateControls();
   try {
-  if (['available', 'paused'].includes(state.clientProgress.phase)) {
+  if (state.settings.autoUpdate !== false && ['available', 'paused'].includes(state.clientProgress.phase)) {
     if (await performClientUpdate() === false) return;
     if (state.settings?.autoLaunchAfterUpdate === false) return;
   }

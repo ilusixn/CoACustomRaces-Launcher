@@ -976,7 +976,10 @@ launcherI18n.register("fr", "Français", {
   "Saved. Restart the server to apply.": "Enregistré. Redémarrez le serveur pour appliquer.",
   "Before a bot reset": "Avant une réinitialisation des bots",
   "Unknown SquidBots option.": "Option SquidBots inconnue.",
-  "That value is not allowed.": "Cette valeur n’est pas autorisée."
+  "That value is not allowed.": "Cette valeur n’est pas autorisée.",
+  "Bots use custom races": "Les bots utilisent les races personnalisées",
+  "Auto update before playing": "Mettre à jour avant de jouer",
+  "Untick to play your current version without updating.": "Décochez pour jouer avec votre version actuelle sans mise à jour."
 }, true);
 launcherI18n.register("es-ES", "Español", {
   "Clear cache before launching": "Borrar caché antes de iniciar",
@@ -1955,7 +1958,10 @@ launcherI18n.register("es-ES", "Español", {
   "Saved. Restart the server to apply.": "Guardado. Reinicia el servidor para aplicar.",
   "Before a bot reset": "Antes de reiniciar los bots",
   "Unknown SquidBots option.": "Opción de SquidBots desconocida.",
-  "That value is not allowed.": "Ese valor no está permitido."
+  "That value is not allowed.": "Ese valor no está permitido.",
+  "Bots use custom races": "Los bots usan razas personalizadas",
+  "Auto update before playing": "Actualizar antes de jugar",
+  "Untick to play your current version without updating.": "Desmarca para jugar con tu versión actual sin actualizar."
 }, true);
 launcherI18n.register("ru", "Русский", {
   "Clear cache before launching": "Очищать кэш перед запуском",
@@ -2934,7 +2940,10 @@ launcherI18n.register("ru", "Русский", {
   "Saved. Restart the server to apply.": "Сохранено. Перезапустите сервер, чтобы применить.",
   "Before a bot reset": "Перед сбросом ботов",
   "Unknown SquidBots option.": "Неизвестный параметр SquidBots.",
-  "That value is not allowed.": "Это значение недопустимо."
+  "That value is not allowed.": "Это значение недопустимо.",
+  "Bots use custom races": "Боты используют пользовательские расы",
+  "Auto update before playing": "Обновлять перед игрой",
+  "Untick to play your current version without updating.": "Снимите галочку, чтобы играть на текущей версии без обновления."
 }, true);
 launcherI18n.register("zh-CN", "简体中文", {
   "Clear cache before launching": "启动前清除缓存",
@@ -3913,5 +3922,8 @@ launcherI18n.register("zh-CN", "简体中文", {
   "Saved. Restart the server to apply.": "已保存。重启服务器后生效。",
   "Before a bot reset": "重置机器人之前",
   "Unknown SquidBots option.": "未知的 SquidBots 选项。",
-  "That value is not allowed.": "该值不被允许。"
+  "That value is not allowed.": "该值不被允许。",
+  "Bots use custom races": "机器人使用自定义种族",
+  "Auto update before playing": "游戏前自动更新",
+  "Untick to play your current version without updating.": "取消勾选即可使用当前版本游玩而不更新。"
 }, true);

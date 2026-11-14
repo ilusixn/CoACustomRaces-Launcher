@@ -975,5 +975,8 @@
   "Saved. Restart the server to apply.": "Сохранено. Перезапустите сервер, чтобы применить.",
   "Before a bot reset": "Перед сбросом ботов",
   "Unknown SquidBots option.": "Неизвестный параметр SquidBots.",
-  "That value is not allowed.": "Это значение недопустимо."
+  "That value is not allowed.": "Это значение недопустимо.",
+  "Bots use custom races": "Боты используют пользовательские расы",
+  "Auto update before playing": "Обновлять перед игрой",
+  "Untick to play your current version without updating.": "Снимите галочку, чтобы играть на текущей версии без обновления."
 }

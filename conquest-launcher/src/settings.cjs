@@ -2,7 +2,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
-const defaults = Object.freeze({ language: 'en', languageSelected: false, startPage: 'home', launchBehavior: 'close', autoLaunchAfterUpdate: true, addonCleanupDismissed: false, rememberClient: true, hdPatches: true, wineCompatibility: false, autoLoginGame: false, downloadLimitMBps: 0, graphicsCompatibility: false, disableGraphicsEnhancements: false, reducedMotion: false, sound: true, installPath: '',
+const defaults = Object.freeze({ language: 'en', languageSelected: false, startPage: 'home', launchBehavior: 'close', autoLaunchAfterUpdate: true, autoUpdate: true, addonCleanupDismissed: false, rememberClient: true, hdPatches: true, wineCompatibility: false, autoLoginGame: false, downloadLimitMBps: 0, graphicsCompatibility: false, disableGraphicsEnhancements: false, reducedMotion: false, sound: true, installPath: '',
   // CoA Custom Races additions
   localMode: true, serverPath: '', realmMode: 'local', realmlist: '127.0.0.1', modules: { squid: false, devMenu: false, races: true }, customOwned: [], versions: { server: '', squid: '', devMenu: '', races: '' } });
 function sanitize(value) {
@@ -15,7 +15,7 @@ function sanitize(value) {
   }
   if (['close', 'minimize', 'keep-open'].includes(value.launchBehavior)) result.launchBehavior = value.launchBehavior;
   if (['home', 'news'].includes(value.startPage)) result.startPage = value.startPage;
-  for (const key of ['addonCleanupDismissed', 'autoLaunchAfterUpdate', 'rememberClient', 'hdPatches', 'wineCompatibility', 'autoLoginGame', 'graphicsCompatibility', 'disableGraphicsEnhancements', 'reducedMotion', 'sound']) {
+  for (const key of ['addonCleanupDismissed', 'autoLaunchAfterUpdate', 'autoUpdate', 'rememberClient', 'hdPatches', 'wineCompatibility', 'autoLoginGame', 'graphicsCompatibility', 'disableGraphicsEnhancements', 'reducedMotion', 'sound']) {
     if (typeof value[key] === 'boolean') result[key] = value[key];
   }
   if (typeof value.downloadLimitMBps === 'number' && Number.isFinite(value.downloadLimitMBps) && (value.downloadLimitMBps === 0 || value.downloadLimitMBps >= 0.1 && value.downloadLimitMBps <= 10000)) result.downloadLimitMBps = Math.round(value.downloadLimitMBps * 10) / 10;

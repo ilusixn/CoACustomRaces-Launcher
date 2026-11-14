@@ -502,8 +502,11 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     await mutateClient(() => configureClientGraphics(info.path, settings.graphicsCompatibility, settings.disableGraphicsEnhancements));
     if (!config.localDownloadDemo) {
       await probeClientFolder(info.path);
-      const release = await clientUpdater.check(info.path, false, true);
-      if (release.needsUpdate) return { running: false, needsUpdate: true };
+      // Auto update off: play the installed version even when a newer release exists.
+      if (settings.autoUpdate !== false) {
+        const release = await clientUpdater.check(info.path, false, true);
+        if (release.needsUpdate) return { running: false, needsUpdate: true };
+      }
     }
     await mutateClient(async () => {
       await clearClientCache(info.path);
