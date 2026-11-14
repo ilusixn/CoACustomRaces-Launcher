@@ -41,9 +41,9 @@ async function inspect(appOutDir) {
   }
   const html = extractFile('public/index.html').toString('utf8');
   assert.deepEqual([...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(match => match[1]), ['builder/data/coa-data.js', 'c.js']);
-  const fuses = await getCurrentFuseWire(path.join(appOutDir, 'ConquestOfAzeroth.exe'));
+  const fuses = await getCurrentFuseWire(path.join(appOutDir, 'CoACustomRacesLauncher.exe'));
   for (const [name, enabled] of Object.entries(expectedFuses)) assert.equal(fuses[FuseV1Options[name]], enabled ? 49 : 48, `Incorrect Electron fuse: ${name}`);
-  const executable = NtExecutable.from(await fs.readFile(path.join(appOutDir, 'ConquestOfAzeroth.exe')));
+  const executable = NtExecutable.from(await fs.readFile(path.join(appOutDir, 'CoACustomRacesLauncher.exe')));
   const resource = NtExecutableResource.from(executable).entries.find(entry => entry.type === 'INTEGRITY' && entry.id === 'ELECTRONASAR');
   assert.ok(resource, 'Missing Windows ASAR integrity resource');
   const integrity = JSON.parse(Buffer.from(resource.bin).toString('utf8')).find(entry => entry.file.replaceAll('\\', '/') === 'resources/app.asar');

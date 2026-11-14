@@ -57,11 +57,11 @@ Var coaPreviousOutDir
     ${EndIf}
   !endif
   ${If} $R0 == 0
-    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "Conquest of AzerothCore is still closing or running. Wait a moment, then click Retry. If it remains open, close the launcher first. No files have been removed." /SD IDCANCEL IDRETRY coaCheckLauncherAgain
+    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "CoA Custom Races launcher is still closing or running. Wait a moment, then click Retry. If it remains open, close the launcher first. No files have been removed." /SD IDCANCEL IDRETRY coaCheckLauncherAgain
     SetErrorLevel 2
     Quit
   ${ElseIf} $R0 != 603
-    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "Windows could not check whether Conquest of AzerothCore is closed (process check code: $R0). Click Retry to check again, or Cancel and restart Windows before trying again. No files have been removed." /SD IDCANCEL IDRETRY coaCheckLauncherAgain
+    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "Windows could not check whether CoA Custom Races launcher is closed (process check code: $R0). Click Retry to check again, or Cancel and restart Windows before trying again. No files have been removed." /SD IDCANCEL IDRETRY coaCheckLauncherAgain
     SetErrorLevel 2
     Quit
   ${EndIf}

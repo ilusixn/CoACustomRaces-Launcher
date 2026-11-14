@@ -27,7 +27,7 @@ async function generate(appOutDir, buildDir, templateDir) {
     }
   }
   await walk(appOutDir);
-  if (!files.some(file => file.path === 'ConquestOfAzeroth.exe') || !files.some(file => file.path === 'resources\\app.asar')) throw new Error('Incomplete launcher payload.');
+  if (!files.some(file => file.path === 'CoACustomRacesLauncher.exe') || !files.some(file => file.path === 'resources\\app.asar')) throw new Error('Incomplete launcher payload.');
   await fs.mkdir(buildDir, { recursive: true });
   const writeLines = (file, lines) => fs.writeFile(path.join(buildDir, file), '\ufeff' + lines.join('\r\n') + '\r\n', 'utf16le');
   await writeLines('coa-owned.txt', files.sort((a, b) => a.path.localeCompare(b.path)).map(file => `${file.hash}|${file.path}`));

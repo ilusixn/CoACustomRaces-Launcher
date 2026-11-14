@@ -4,7 +4,7 @@ const path = require('node:path');
 const { sha512 } = require('./publish-launcher.cjs');
 async function prepare() {
   const root = path.resolve(__dirname, '..'); const version = require('../package.json').version;
-  const file = `ConquestOfAzerothSetup-${version}.exe`;
+  const file = `CoACustomRacesSetup-${version}.exe`;
   const dist = path.join(root, 'dist'); const bundle = path.join(dist, 'launcher-release');
   await fs.mkdir(bundle, { recursive: true });
   for (const name of [file, file + '.blockmap']) await fs.copyFile(path.join(dist, name), path.join(bundle, name));
