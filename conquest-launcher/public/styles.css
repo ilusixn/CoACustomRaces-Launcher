@@ -252,7 +252,7 @@ body.auth-locked .main-nav, body.auth-locked .utilitybar, body.auth-locked #main
 .coa-buttons button{padding:8px 12px}
 .coa-buttons svg{width:13px;height:13px}
 .coa-status{font-size:10px;color:#e0c79d;min-height:14px;line-height:1.4}
-.coffee-card{display:flex;align-items:center;gap:12px;border:1px solid #e0a34f;background:linear-gradient(108deg,#ffdd00e0,#f5b400d9);color:#0b2024;border-radius:12px;padding:10px 14px;text-align:left}
+.coffee-card{display:flex;align-items:center;gap:12px;border:1px solid #9be36a;background:linear-gradient(108deg,#6fc23ee8,#3f9a2cdd);color:#06200c;border-radius:12px;padding:10px 14px;text-align:left}
 .coffee-card:hover{filter:brightness(1.08)}
 .coffee-card strong{display:block;font-size:13px}
 .coffee-card small{display:block;font-size:9px;opacity:.8}
