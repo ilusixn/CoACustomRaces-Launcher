@@ -275,6 +275,44 @@ class CoaCustom {
     return release.tag_name;
   }
 
+  // Server half of a Custom Races release (CoA-Custom-V*-Server.zip): server DBCs, the module config and the world SQL
+  // (NPC placement, race starts, racials...). Same steps as the release's install.py, which re-runs every file on each
+  // update. shortcut: worldserver.exe from that zip is NOT used (it is built for the CoA-Bots repack, not this server's core).
+  async updateRacesServer(root) {
+    const release = await this.latestRelease(SOURCES.races);
+    const asset = release.assets.find(a => /^CoA-Custom-V[\d.]+-Server\.zip$/.test(a.name));
+    if (!asset) throw new Error(`${release.tag_name} has no server file (CoA-Custom-V…-Server.zip).`);
+    const work = path.join(this.tmpDir(), 'races-server');
+    await fsp.rm(work, { recursive: true, force: true });
+    const zip = await this.download(asset.browser_download_url, path.join(work, asset.name), { label: `Custom Races server ${release.tag_name}`, size: asset.size });
+    const files = path.join(work, 'files');
+    await this.extractZip(zip, 'CoA-Custom/files/', files);
+    const sqls = (await fsp.readdir(path.join(files, 'sql')).catch(() => [])).filter(n => /\.sql$/i.test(n))
+      .sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0) || a.localeCompare(b));
+    if (!sqls.length) throw new Error('The Custom Races server file has no database updates.');
+    await this.backupInternal(root, 'before-update');
+    this.emit('server', 'Stopping the server…');
+    await this.manage(root, 'stop-all').catch(() => {});
+    this.emit('server', 'Copying server files…');
+    const copyAll = async (from, to, pick = () => true) => {
+      for (const name of await fsp.readdir(from).catch(() => [])) if (pick(name)) { await fsp.mkdir(to, { recursive: true }); await fsp.copyFile(path.join(from, name), path.join(to, name)); }
+    };
+    await copyAll(path.join(files, 'dbc'), path.join(root, 'Data/dbc'), n => /\.dbc$/i.test(n));
+    await copyAll(path.join(files, 'dbc_clientset'), path.join(root, 'Data/dbc_clientset'), n => /\.dbc$/i.test(n));
+    const conf = path.join(root, 'Core/configs/modules');
+    await copyAll(path.join(files, 'modules'), conf, n => n === 'coa_custom_races.conf.dist');
+    if (!fs.existsSync(path.join(conf, 'coa_custom_races.conf'))) await fsp.copyFile(path.join(conf, 'coa_custom_races.conf.dist'), path.join(conf, 'coa_custom_races.conf')).catch(() => {});
+    await this.withDatabase(root, async () => {
+      for (const [index, name] of sqls.entries()) {
+        this.emit('server', `Applying Custom Races database updates… ${index + 1}/${sqls.length}`);
+        try { await this.sqlFile(root, 'acore_world', path.join(files, 'sql', name)); }
+        catch (error) { throw new Error(`Custom Races database update ${name} failed: ${error.message}`); }
+      }
+    });
+    await fsp.rm(work, { recursive: true, force: true });
+    return release.tag_name;
+  }
+
   // Installs (or updates, with `only`) the chosen modules' files and sets the server switches. Returns installed versions.
   async applyModules({ serverPath, clientPath, squid, devMenu, races, only = null }) {
     return this.exclusive(async () => {
@@ -290,6 +328,8 @@ class CoaCustom {
       if (want('squid') && addons) versions.squid = await this.installAddon(SOURCES.squidAddon, /\.zip$/i, 'SquidBots addon', addons);
       if (want('devMenu') && addons) versions.devMenu = await this.installAddon(SOURCES.devMenu, /addon.*\.zip$/i, 'Dev Menu addon', addons);
       if (want('races') && clientPath) versions.races = await this.installRaces(clientPath);
+      // An explicit races update also brings the server half (NPC placement, race data); a fresh server already has its own.
+      if (only === 'races' && serverPath) versions.races = await this.updateRacesServer(serverPath);
       const notes = [];
       if (want('devMenu')) notes.push('Dev Menu: the addon is installed. Its server part needs a worldserver built with mod-ilusixn-devmenu.');
       if (serverPath && !only) notes.push('Restart the server to apply the switches.');

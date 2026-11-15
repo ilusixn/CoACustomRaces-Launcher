@@ -672,7 +672,7 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     const info = await clientInfo();
     if (!info.installed) throw new Error('Download or locate the game client first.');
     writableClient(info.path); await requireGameClosed(info.path);
-    const result = await mutateClient(() => coa.applyModules({ clientPath: info.path, only: key }));
+    const result = await mutateClient(() => coa.applyModules({ clientPath: info.path, serverPath: key === 'races' ? settings.serverPath : '', only: key }));
     await persist({ ...settings, customOwned: result.owned || settings.customOwned, versions: { ...settings.versions, ...result.versions } });
     return result;
   });
