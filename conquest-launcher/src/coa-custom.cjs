@@ -596,7 +596,7 @@ class CoaCustom {
   }
 
   async listAccounts(root) {
-    return this.withDatabase(root, async () => (await this.sql(root, 'SELECT username FROM acore_auth.account ORDER BY id;')).split(/\r?\n/).map(s => s.trim()).filter(Boolean));
+    return this.withDatabase(root, async () => (await this.sql(root, "SELECT username FROM acore_auth.account WHERE username NOT LIKE 'RNDBOT%' ORDER BY id;")).split(/\r?\n/).map(s => s.trim()).filter(Boolean));
   }
 
   // Stops the server and deletes its whole folder (characters and the launcher's backups live inside it).
