@@ -275,6 +275,30 @@ class CoaCustom {
     return release.tag_name;
   }
 
+  // Optional core of a Custom Races release: CoA-Custom-V*-Core.zip holding a worldserver.exe built for THIS server's base
+  // (the plain Server zip's worldserver.exe is for the CoA-Bots repack and is never used). Boats/elevators need it.
+  // The previous worldserver.exe is kept as worldserver.exe.before-races. Servers stay stopped (caller did stop-all).
+  async updateRacesCore(root, release) {
+    const asset = release.assets.find(a => /^CoA-Custom-V[\d.]+-Core\.zip$/.test(a.name));
+    if (!asset) { this.emit('server', 'This release has no core file; the server program was left as it is.'); return false; }
+    const work = path.join(this.tmpDir(), 'races-core');
+    await fsp.rm(work, { recursive: true, force: true });
+    const zip = await this.download(asset.browser_download_url, path.join(work, asset.name), { label: `Custom Races core ${release.tag_name}`, size: asset.size });
+    const out = path.join(work, 'x');
+    await this.extractZip(zip, '', out);
+    const found = (await fsp.readdir(out, { recursive: true })).find(n => /(^|[\\/])worldserver\.exe$/i.test(n));
+    if (!found) throw new Error('The Custom Races core file has no worldserver.exe.');
+    const exe = path.join(out, found);
+    const head = Buffer.alloc(2); const fd = await fsp.open(exe, 'r'); await fd.read(head, 0, 2, 0); await fd.close();
+    if (head.toString() !== 'MZ' || (await fsp.stat(exe)).size < 20 * 2 ** 20) throw new Error('The Custom Races core worldserver.exe is not valid.');
+    const target = path.join(root, 'Core/worldserver.exe');
+    await fsp.copyFile(target, `${target}.before-races`).catch(() => {});
+    this.emit('server', 'Replacing the server program…');
+    await fsp.copyFile(exe, target);
+    await fsp.rm(work, { recursive: true, force: true });
+    return true;
+  }
+
   // Server half of a Custom Races release (CoA-Custom-V*-Server.zip): server DBCs, the module config and the world SQL
   // (NPC placement, race starts, racials...). Same steps as the release's install.py, which re-runs every file on each
   // update. shortcut: worldserver.exe from that zip is NOT used (it is built for the CoA-Bots repack, not this server's core).
@@ -303,6 +327,7 @@ class CoaCustom {
     const conf = path.join(root, 'Core/configs/modules');
     await copyAll(path.join(files, 'modules'), conf, n => n === 'coa_custom_races.conf.dist');
     if (!fs.existsSync(path.join(conf, 'coa_custom_races.conf'))) await fsp.copyFile(path.join(conf, 'coa_custom_races.conf.dist'), path.join(conf, 'coa_custom_races.conf')).catch(() => {});
+    await this.updateRacesCore(root, release);
     await this.withDatabase(root, async () => {
       for (const [index, name] of sqls.entries()) {
         this.emit('server', `Applying Custom Races database updates… ${index + 1}/${sqls.length}`);
