@@ -1097,7 +1097,7 @@ const actions = {
   'coa-update': element => coaRun(lt`Updating ${moduleNames[element.dataset.key]}…`, async () => {
     const key = element.dataset.key;
     const result = key === 'server' ? await api.coaUpdateServer() : await api.coaUpdateModule(key);
-    state.coaStatus = key === 'server' ? (result.upToDate ? t('Server is up to date.') : lt`Server updated to ${result.version}, ${result.applied} database updates applied.`) : lt`${moduleNames[key]} updated.`;
+    state.coaStatus = key === 'server' ? (result.upToDate ? t('Server is up to date.') : lt`Server updated to ${result.version}, ${result.applied} database updates applied.`) : [lt`${moduleNames[key]} updated.`, ...(result?.notes || []).filter(n => !n.startsWith('Dev Menu')).map(n => tm(n))].join(' ');
     state.coaUpdates = null; state.settings = await api.bootstrap().then(data => data.settings); render();
   }),
   'coa-bot-tab': element => { state.botTab = element.dataset.tab; if (state.botTab === 'dashboard' && !state.botOpts) loadBotDashboard(); render(); },

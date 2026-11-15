@@ -354,9 +354,12 @@ class CoaCustom {
       if (want('squid') && addons) versions.squid = await this.installAddon(SOURCES.squidAddon, /\.zip$/i, 'SquidBots addon', addons);
       if (want('devMenu') && addons) versions.devMenu = await this.installAddon(SOURCES.devMenu, /addon.*\.zip$/i, 'Dev Menu addon', addons);
       if (want('races') && clientPath) versions.races = await this.installRaces(clientPath);
-      // An explicit races update also brings the server half (NPC placement, race data); a fresh server already has its own.
-      if (only === 'races' && serverPath) versions.races = await this.updateRacesServer(serverPath);
       const notes = [];
+      // The server half carries the NPCs, ferries and race data, so races without it show nothing in game.
+      if (want('races')) {
+        if (!serverPath) notes.push('No server is selected, so only the client was installed. Select your server (Locate server), then update again.');
+        else try { versions.races = await this.updateRacesServer(serverPath); } catch (error) { if (only) throw error; notes.push(`Server part skipped: ${error.message}`); }
+      }
       if (want('devMenu')) notes.push('Dev Menu: the addon is installed. Its server part needs a worldserver built with mod-ilusixn-devmenu.');
       if (serverPath && !only) notes.push('Restart the server to apply the switches.');
       this.emit('ready', 'Modules applied.');
