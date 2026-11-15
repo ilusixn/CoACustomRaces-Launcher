@@ -625,7 +625,7 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
   });
 
   // ---- CoA Custom Races: server, modules and realmlist ----
-  const coa = new CoaCustom({ fetchImpl: electronFetch, notify: status => sendStatus('coa:progress', status) });
+  const coa = new CoaCustom({ fetchImpl: electronFetch, notify: status => sendStatus('coa:progress', status), serverRepository: /^[\w.-]+\/[\w.-]+$/.test(config.serverRepository || '') ? config.serverRepository : '' });
   const requireServer = async () => {
     if (!settings.serverPath || !(await fs.stat(path.join(settings.serverPath, 'Scripts/manage.py')).catch(() => null))) throw new Error('Create or locate your server first.');
     return settings.serverPath;
