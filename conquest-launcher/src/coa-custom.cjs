@@ -53,7 +53,8 @@ function networkAddresses() {
 }
 
 class CoaCustom {
-  constructor({ fetchImpl, notify }) { this.fetch = fetchImpl; this.notify = notify; this.busy = false; }
+  // serverRepository: GitHub repo whose releases hold the server package (default: the built-in source above).
+  constructor({ fetchImpl, notify, serverRepository = '' }) { this.fetch = fetchImpl; this.notify = notify; this.busy = false; this.sources = { ...SOURCES, ...(serverRepository ? { server: serverRepository } : {}) }; }
 
   emit(phase, message, extra = {}) { this.notify({ phase, message, ...extra }); }
 
@@ -130,7 +131,7 @@ class CoaCustom {
       const existing = await fsp.readdir(dest).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
       if (existing.length) throw new Error('Choose an empty folder for the server.');
       this.emit('server', 'Finding the latest CoA server…');
-      const release = await this.latestRelease(SOURCES.server);
+      const release = await this.latestRelease(this.sources.server);
       const manifestFile = path.join(dest + '.download', 'install-manifest.json');
       await this.download(this.asset(release, 'install-manifest.json').browser_download_url, manifestFile, { label: 'server manifest' });
       const manifest = JSON.parse(await fsp.readFile(manifestFile, 'utf8'));
@@ -367,7 +368,9 @@ class CoaCustom {
       if (want('races') && clientPath) versions.races = await this.installRaces(clientPath);
       const notes = [];
       // The server half carries the NPCs, ferries and race data, so races without it show nothing in game.
-      if (want('races')) {
+      // An own-server package already carries the races' server half (DBC, SQL, core); only the client files are separate.
+      const ownServer = !!serverPath && fs.existsSync(path.join(serverPath, 'Settings/own-server.json'));
+      if (want('races') && !ownServer) {
         if (!serverPath) notes.push('No server is selected, so only the client was installed. Select your server (Locate server), then update again.');
         else try { versions.races = await this.updateRacesServer(serverPath); } catch (error) { if (only) throw error; notes.push(`Server part skipped: ${error.message}`); }
       }
@@ -383,7 +386,7 @@ class CoaCustom {
 
   async latestVersions() {
     const tag = async repo => (await this.latestRelease(repo).catch(() => null))?.tag_name || null;
-    const [server, squid, devMenu, races] = await Promise.all([tag(SOURCES.server), tag(SOURCES.squidAddon), tag(SOURCES.devMenu), tag(SOURCES.races)]);
+    const [server, squid, devMenu, races] = await Promise.all([tag(this.sources.server), tag(SOURCES.squidAddon), tag(SOURCES.devMenu), tag(SOURCES.races)]);
     return { server, squid, devMenu, races };
   }
 
@@ -404,7 +407,7 @@ class CoaCustom {
   // database data and player files stay), then applies the release's new database updates once each.
   async updateServer(root, installedVersion) {
     return this.exclusive(async () => {
-      const release = await this.latestRelease(SOURCES.server);
+      const release = await this.latestRelease(this.sources.server);
       if (release.tag_name === installedVersion) return { version: release.tag_name, applied: 0, upToDate: true };
       const work = path.join(path.dirname(root), path.basename(root) + '.update');
       const manifestFile = path.join(work, 'manifest.json');
@@ -470,7 +473,7 @@ class CoaCustom {
   }
 
   async migrationIds(tag) {
-    const release = await this.latestRelease(SOURCES.server, tag);
+    const release = await this.latestRelease(this.sources.server, tag);
     const response = await this.fetch(this.asset(release, 'manifest.json').browser_download_url);
     if (!response.ok) throw new Error(`Could not read the ${tag} database update list.`);
     return new Set((await response.json()).migrations.map(m => `${m.db}/${m.id}`));
