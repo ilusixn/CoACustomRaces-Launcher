@@ -978,5 +978,6 @@
   "That value is not allowed.": "该值不被允许。",
   "Bots use custom races": "机器人使用自定义种族",
   "Auto update before playing": "游戏前自动更新",
-  "Untick to play your current version without updating.": "取消勾选即可使用当前版本游玩而不更新。"
+  "Untick to play your current version without updating.": "取消勾选即可使用当前版本游玩而不更新。",
+  "Created from another server build": "由其他服务器版本创建"
 }

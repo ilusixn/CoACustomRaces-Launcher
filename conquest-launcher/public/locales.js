@@ -979,7 +979,8 @@ launcherI18n.register("fr", "Français", {
   "That value is not allowed.": "Cette valeur n’est pas autorisée.",
   "Bots use custom races": "Les bots utilisent les races personnalisées",
   "Auto update before playing": "Mettre à jour avant de jouer",
-  "Untick to play your current version without updating.": "Décochez pour jouer avec votre version actuelle sans mise à jour."
+  "Untick to play your current version without updating.": "Décochez pour jouer avec votre version actuelle sans mise à jour.",
+  "Created from another server build": "Créé depuis un autre serveur"
 }, true);
 launcherI18n.register("es-ES", "Español", {
   "Clear cache before launching": "Borrar caché antes de iniciar",
@@ -1961,7 +1962,8 @@ launcherI18n.register("es-ES", "Español", {
   "That value is not allowed.": "Ese valor no está permitido.",
   "Bots use custom races": "Los bots usan razas personalizadas",
   "Auto update before playing": "Actualizar antes de jugar",
-  "Untick to play your current version without updating.": "Desmarca para jugar con tu versión actual sin actualizar."
+  "Untick to play your current version without updating.": "Desmarca para jugar con tu versión actual sin actualizar.",
+  "Created from another server build": "Creado desde otro servidor"
 }, true);
 launcherI18n.register("ru", "Русский", {
   "Clear cache before launching": "Очищать кэш перед запуском",
@@ -2943,7 +2945,8 @@ launcherI18n.register("ru", "Русский", {
   "That value is not allowed.": "Это значение недопустимо.",
   "Bots use custom races": "Боты используют пользовательские расы",
   "Auto update before playing": "Обновлять перед игрой",
-  "Untick to play your current version without updating.": "Снимите галочку, чтобы играть на текущей версии без обновления."
+  "Untick to play your current version without updating.": "Снимите галочку, чтобы играть на текущей версии без обновления.",
+  "Created from another server build": "Создан из другой сборки сервера"
 }, true);
 launcherI18n.register("zh-CN", "简体中文", {
   "Clear cache before launching": "启动前清除缓存",
@@ -3925,5 +3928,6 @@ launcherI18n.register("zh-CN", "简体中文", {
   "That value is not allowed.": "该值不被允许。",
   "Bots use custom races": "机器人使用自定义种族",
   "Auto update before playing": "游戏前自动更新",
-  "Untick to play your current version without updating.": "取消勾选即可使用当前版本游玩而不更新。"
+  "Untick to play your current version without updating.": "取消勾选即可使用当前版本游玩而不更新。",
+  "Created from another server build": "由其他服务器版本创建"
 }, true);

@@ -978,5 +978,6 @@
   "That value is not allowed.": "Это значение недопустимо.",
   "Bots use custom races": "Боты используют пользовательские расы",
   "Auto update before playing": "Обновлять перед игрой",
-  "Untick to play your current version without updating.": "Снимите галочку, чтобы играть на текущей версии без обновления."
+  "Untick to play your current version without updating.": "Снимите галочку, чтобы играть на текущей версии без обновления.",
+  "Created from another server build": "Создан из другой сборки сервера"
 }

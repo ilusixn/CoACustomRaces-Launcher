@@ -660,7 +660,7 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     return result;
   });
   // ---- updates, connected to each repository's latest GitHub release ----
-  handle('coa:updates', async () => ({ installed: settings.versions, latest: await coa.latestVersions(), modules: settings.modules, server: settings.serverPath }));
+  handle('coa:updates', async () => ({ installed: settings.versions, latest: await coa.latestVersions(), modules: settings.modules, server: settings.serverPath, serverRepo: coa.sources.server, foreignServer: coa.foreignServer(settings.serverPath) }));
   handle('coa:update-server', async () => {
     const result = await coa.updateServer(await requireServer(), settings.versions.server);
     await persist({ ...settings, versions: { ...settings.versions, server: result.version } });

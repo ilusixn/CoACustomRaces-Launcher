@@ -978,5 +978,6 @@
   "That value is not allowed.": "Ese valor no está permitido.",
   "Bots use custom races": "Los bots usan razas personalizadas",
   "Auto update before playing": "Actualizar antes de jugar",
-  "Untick to play your current version without updating.": "Desmarca para jugar con tu versión actual sin actualizar."
+  "Untick to play your current version without updating.": "Desmarca para jugar con tu versión actual sin actualizar.",
+  "Created from another server build": "Creado desde otro servidor"
 }

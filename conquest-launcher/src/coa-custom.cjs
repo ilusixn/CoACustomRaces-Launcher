@@ -405,8 +405,12 @@ class CoaCustom {
 
   // Server update from the latest Corfirean/coa-server-build release: replaces the package's own files (configs,
   // database data and player files stay), then applies the release's new database updates once each.
+  // True when releases come from a custom repo but this server was not made from it (no Settings/own-server.json).
+  foreignServer(root) { return this.sources.server !== SOURCES.server && !!root && !fs.existsSync(path.join(root, 'Settings/own-server.json')); }
+
   async updateServer(root, installedVersion) {
     return this.exclusive(async () => {
+      if (this.foreignServer(root)) throw new Error('This server was created from another server build, so it cannot be updated to the CoA Custom server. Create a new server to switch.');
       const release = await this.latestRelease(this.sources.server);
       if (release.tag_name === installedVersion) return { version: release.tag_name, applied: 0, upToDate: true };
       const work = path.join(path.dirname(root), path.basename(root) + '.update');
