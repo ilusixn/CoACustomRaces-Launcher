@@ -91,6 +91,8 @@ test('launcher handoff obeys close, minimize and keep-open preferences', () => {
   applyLauncherLaunchBehavior('minimize',actions);assert.equal(minimized,1);assert.equal(closed,0);
   applyLauncherLaunchBehavior('close',actions);assert.equal(closed,1);assert.equal(scheduled,1);
   const {sanitize}=require('../src/settings.cjs');
-  assert.equal(sanitize({launchBehavior:'invalid'}).launchBehavior,'close');
+  assert.equal(sanitize({launchBehavior:'invalid'}).launchBehavior,'keep-open');
+  assert.equal(sanitize({launchBehavior:'close'}).launchBehavior,'keep-open'); // old default migrates once
+  assert.equal(sanitize({launchBehavior:'close',launchBehaviorMigrated:true}).launchBehavior,'close'); // a later explicit choice stays
   assert.equal(sanitize({launchBehavior:'keep-open'}).launchBehavior,'keep-open');
 });
