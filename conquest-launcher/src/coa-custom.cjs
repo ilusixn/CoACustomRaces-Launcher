@@ -207,11 +207,11 @@ class CoaCustom {
   }
 
   // Runs SQL with the server's own mysql.exe; returns tab-separated rows. With `file`, the file is fed on stdin.
-  async sql(root, statement, { schema = '', file = '', stream = null } = {}) {
+  async sql(root, statement, { schema = '', file = '', stream = null, tolerant = false } = {}) {
     const db = JSON.parse(await fsp.readFile(path.join(root, 'Settings/database.json'), 'utf8'));
     const repack = JSON.parse(await fsp.readFile(path.join(root, 'Settings/repack.json'), 'utf8'));
     const mysql = path.join(root, 'mysql/bin/mysql.exe');
-    const args = ['-h127.0.0.1', `-P${repack.mysqlPort || 3306}`, '-uroot', '-N', '-B', '--default-character-set=utf8mb4', ...(schema ? [schema] : []), ...(file || stream ? [] : ['-e', statement])];
+    const args = ['-h127.0.0.1', `-P${repack.mysqlPort || 3306}`, '-uroot', '-N', '-B', '--default-character-set=utf8mb4', ...(tolerant ? ['--force'] : []), ...(schema ? [schema] : []), ...(file || stream ? [] : ['-e', statement])];
     return new Promise((resolve, reject) => {
       // MYSQL_PWD keeps the password off the process command line.
       const child = spawn(mysql, args, { windowsHide: true, env: { ...process.env, MYSQL_PWD: db.rootPassword }, stdio: [file || stream ? 'pipe' : 'ignore', 'pipe', 'pipe'] });
@@ -219,13 +219,18 @@ class CoaCustom {
       child.stdout.on('data', d => { out += d; });
       child.stderr.on('data', d => { err += d; });
       child.on('error', reject);
-      child.on('close', code => code === 0 ? resolve(out) : reject(new Error(`Database error: ${err.trim().slice(0, 300)}`)));
+      // tolerant (re-running a release's SQL): rows/tables/columns that already exist are expected, anything else is a real error
+      child.on('close', code => {
+        const real = err.split('\n').filter(l => /ERROR [0-9]+/.test(l) && !(tolerant && /ERROR (1062|1050|1060|1061|1068) /.test(l)));
+        if (code === 0 || (tolerant && !real.length)) resolve(out);
+        else reject(new Error(`Database error: ${(tolerant ? real.join(' ') : err).trim().slice(0, 300)}`));
+      });
       if (file) fs.createReadStream(file).on('error', reject).pipe(child.stdin);
       if (stream) stream.on('error', reject).pipe(child.stdin);
     });
   }
 
-  sqlFile(root, schema, file) { return this.sql(root, '', { schema, file }); }
+  sqlFile(root, schema, file, tolerant = false) { return this.sql(root, '', { schema, file, tolerant }); }
 
   async startServer(root, realmAddress) {
     return this.exclusive(async () => {
@@ -331,7 +336,7 @@ class CoaCustom {
     await this.withDatabase(root, async () => {
       for (const [index, name] of sqls.entries()) {
         this.emit('server', `Applying Custom Races database updates… ${index + 1}/${sqls.length}`);
-        try { await this.sqlFile(root, 'acore_world', path.join(files, 'sql', name)); }
+        try { await this.sqlFile(root, 'acore_world', path.join(files, 'sql', name), true); }
         catch (error) { throw new Error(`Custom Races database update ${name} failed: ${error.message}`); }
       }
     });
