@@ -307,3 +307,9 @@ body.auth-locked .main-nav, body.auth-locked .utilitybar, body.auth-locked #main
 .bot-opt{display:grid;grid-template-columns:1fr 220px;gap:14px;align-items:start;padding:9px 12px;border:1px solid #49a39f33;border-radius:8px;background:#0e1d1fb0}
 .bot-opt strong{display:block;font-size:12px;color:#e8fffb}
 .bot-opt small{display:block;margin-top:3px;font-size:10px;line-height:1.5;color:#a9c8c5;max-height:62px;overflow:hidden}
+
+.coa-bar{height:6px;border-radius:4px;background:#5faba81f;overflow:hidden;margin:10px 0 6px;opacity:0;transition:opacity .2s}
+.coa-bar.on{opacity:1}
+.coa-bar i{display:block;height:100%;background:linear-gradient(90deg,#3d9d98,#8fe0da);transition:width .3s}
+.coa-bar.wait i{width:35%!important;animation:coa-wait 1.2s ease-in-out infinite alternate}
+@keyframes coa-wait{from{margin-left:0}to{margin-left:65%}}

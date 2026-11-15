@@ -299,6 +299,7 @@ class CoaCustom {
     };
     await copyAll(path.join(files, 'dbc'), path.join(root, 'Data/dbc'), n => /\.dbc$/i.test(n));
     await copyAll(path.join(files, 'dbc_clientset'), path.join(root, 'Data/dbc_clientset'), n => /\.dbc$/i.test(n));
+    for (const sub of ['maps', 'vmaps', 'mmaps']) await copyAll(path.join(files, 'server_data', sub), path.join(root, 'Data', sub)); // V2.0.1: map 907 (Fading Island)
     const conf = path.join(root, 'Core/configs/modules');
     await copyAll(path.join(files, 'modules'), conf, n => n === 'coa_custom_races.conf.dist');
     if (!fs.existsSync(path.join(conf, 'coa_custom_races.conf'))) await fsp.copyFile(path.join(conf, 'coa_custom_races.conf.dist'), path.join(conf, 'coa_custom_races.conf')).catch(() => {});

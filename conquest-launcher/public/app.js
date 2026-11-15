@@ -348,13 +348,13 @@ const realmLabels = { local: 'Local (this PC)', lan: 'LAN', hamachi: 'LogMeIn Ha
 function coaPanelHtml() {
   const s = state.settings;
   const server = s.serverPath ? lh`<span class="coa-path" title="${escape(s.serverPath)}">${escape(s.serverPath)}</span>` : lh`<span class="coa-path">${t('No server yet')}</span>`;
-  const mods = ['squid', 'devMenu', 'races'].filter(k => s.modules?.[k]).map(k => ({ squid: 'SquidBots', devMenu: 'Dev Menu', races: 'Custom Races V2' })[k]).join(' · ') || t('No modules');
-  return lh`<div class="coa-panel"><div class="coa-row"><span class="coa-title">${icon('database')}Server</span>${server}</div><div class="coa-buttons">${s.serverPath ? lh`<button class="secondary-button" data-action="coa-start">${icon('play')}Start</button><button class="secondary-button" data-action="coa-stop">Stop</button>` : lh`<button class="gold-button" data-action="coa-create">${icon('download')}Create server</button><button class="secondary-button" data-action="coa-locate">${icon('folder')}Locate</button>`}</div><div class="coa-row"><span class="coa-title">${icon('addons')}Modules</span><span class="coa-path">${escape(mods)}</span></div><div class="coa-buttons"><button class="gold-button" data-action="coa-modules">Apply modules</button>${s.serverPath ? lh`<button class="secondary-button" data-action="coa-accounts">${icon('user')}Accounts</button>` : ''}<button class="secondary-button" data-action="coa-backups">${icon('shield')}Backups</button><button class="secondary-button" data-action="coa-trouble">${icon('info')}Troubleshoot</button><button class="secondary-button" data-action="coa-realm">${icon('globe')}Realmlist: ${escape(realmLabels[s.realmMode] || 'Local')}</button></div><div id="coa-status" class="coa-status" role="status">${escape(state.coaStatus || '')}</div></div>`;
+  const mods = ['squid', 'devMenu', 'races'].filter(k => s.modules?.[k]).map(k => ({ squid: 'SquidBots', devMenu: 'Dev Menu', races: racesLabel('Custom Races') })[k]).join(' · ') || t('No modules');
+  return lh`<div class="coa-panel"><div class="coa-row"><span class="coa-title">${icon('database')}Server</span>${server}</div><div class="coa-buttons">${s.serverPath ? lh`<button class="secondary-button" data-action="coa-start">${icon('play')}Start</button><button class="secondary-button" data-action="coa-stop">Stop</button>` : lh`<button class="gold-button" data-action="coa-create">${icon('download')}Create server</button><button class="secondary-button" data-action="coa-locate">${icon('folder')}Locate</button>`}</div><div class="coa-row"><span class="coa-title">${icon('addons')}Modules</span><span class="coa-path">${escape(mods)}</span></div><div class="coa-buttons"><button class="gold-button" data-action="coa-modules">Apply modules</button>${s.serverPath ? lh`<button class="secondary-button" data-action="coa-accounts">${icon('user')}Accounts</button>` : ''}<button class="secondary-button" data-action="coa-backups">${icon('shield')}Backups</button><button class="secondary-button" data-action="coa-trouble">${icon('info')}Troubleshoot</button><button class="secondary-button" data-action="coa-realm">${icon('globe')}Realmlist: ${escape(realmLabels[s.realmMode] || 'Local')}</button></div><div class="coa-bar ${state.coaBusy ? (state.coaPct ? 'on' : 'on wait') : ''}"><i id="coa-bar-fill" style="width:${state.coaPct || 0}%"></i></div><div id="coa-status" class="coa-status" role="status">${escape(state.coaStatus || '')}</div></div>`;
 }
 function showModules() {
   const m = state.settings.modules || {};
   const row = (key, title, text, link) => lh`<label class="setting-row"><span><span class="setting-title">${title}</span><span class="setting-description">${text} <button class="link-button" data-action="coa-link" data-link="${link}">${t('More')}</button></span></span><input class="switch" type="checkbox" data-module="${key}" ${m[key] ? 'checked' : ''}></label>`;
-  openModal(lh`${modalHeader(t('Apply modules'), t('Choose what goes on your server and client'))}<div class="modal-body">${row('squid', 'SquidBots (SQUID Playerbots)', t('AI players for your world. Always the latest version shipped with the server, plus the latest SquidBots addon. Off = no bots.'), 'squid')}${row('devMenu', 'ilusixn Dev Menu', t('In-game /dev editor addon (NPCs, items, quests). Its server part needs a worldserver built with the module.'), 'devmenu')}${row('races', 'CoA Custom Races V2', t('80+ custom races: turns races on in your server and installs the V2 client files (about 8.6 GB download). Starts with CoACustomRace.exe.'), 'races')}<div class="info-box">${icon('info')}<span>${t('Close the game first. Unchecking a module turns it off on the server; files already installed stay.')}</span></div></div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button" data-action="coa-apply">${t('Apply')}</button></div>`);
+  openModal(lh`${modalHeader(t('Apply modules'), t('Choose what goes on your server and client'))}<div class="modal-body">${row('squid', 'SquidBots (SQUID Playerbots)', t('AI players for your world. Always the latest version shipped with the server, plus the latest SquidBots addon. Off = no bots.'), 'squid')}${row('devMenu', 'ilusixn Dev Menu', t('In-game /dev editor addon (NPCs, items, quests). Its server part needs a worldserver built with the module.'), 'devmenu')}${row('races', racesLabel('CoA Custom Races'), t('80+ custom races: turns races on in your server and installs the V2 client files (about 8.6 GB download). Starts with CoACustomRace.exe.'), 'races')}<div class="info-box">${icon('info')}<span>${t('Close the game first. Unchecking a module turns it off on the server; files already installed stay.')}</span></div></div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button" data-action="coa-apply">${t('Apply')}</button></div>`);
 }
 async function showRealm() {
   const net = await api.coaNetwork().catch(() => ({ lan: [], hamachi: [] }));
@@ -384,9 +384,15 @@ async function showTroubleshoot() {
   const summary = bad ? lt`${bad} problem(s) found` : warn ? lt`No problems, ${warn} note(s)` : t('Everything looks fine');
   openModal(lh`${modalHeader(t('Troubleshoot'), summary)}<div class="modal-body check-list">${body}</div><div class="modal-footer"><button class="secondary-button" data-action="coa-trouble">${t('Run again')}</button><button class="gold-button" data-action="dismiss-modal">${t('Done')}</button></div>`, 'backup-dialog');
 }
+// Shows the installed (else latest) races release, so the name follows the module's updates.
+function racesLabel(base) {
+  const tag = state.settings?.versions?.races || state.coaUpdates?.latest?.races || '';
+  const v = tag.replace(/^[^d]*/, '');
+  return `${base} V${v || '2'}`;
+}
 async function coaRun(label, action) {
-  state.coaBusy = true; state.coaStatus = label; render();
-  try { return await action(); } finally { state.coaBusy = false; }
+  state.coaBusy = true; state.coaStatus = label; state.coaPct = 0; render();
+  try { return await action(); } finally { state.coaBusy = false; state.coaPct = 0; if (state.page === 'updates') render(); }
 }
 // ---- CoA Custom Races pages: Updates, Races, Bots ----
 async function showAccounts(notice = '') {
@@ -1128,7 +1134,7 @@ const actions = {
     closeModal();
     await coaRun(t('Applying modules…'), async () => {
       const result = await api.coaApplyModules(choice);
-      state.settings.modules = choice;
+      state.settings = await api.bootstrap().then(data => data.settings); state.settings.modules = choice;
       state.coaStatus = [t('Modules applied.'), ...(result?.notes || [])].join(' '); render();
     });
   },
@@ -1156,6 +1162,8 @@ api.onCoaProgress?.(status => {
   if (!status) return;
   const pct = status.total ? ` ${Math.floor(status.done / status.total * 100)}% (${(status.done / 2 ** 30).toFixed(2)} / ${(status.total / 2 ** 30).toFixed(2)} GB)` : '';
   state.coaStatus = `${status.message || ''}${pct}`;
+  state.coaPct = status.total ? Math.floor(status.done / status.total * 100) : state.coaPct;
+  const fill = document.getElementById('coa-bar-fill'); if (fill) { fill.style.width = `${state.coaPct || 0}%`; fill.parentElement.className = `coa-bar on${state.coaPct ? '' : ' wait'}`; }
   const line = document.getElementById('coa-status');
   if (line) line.textContent = state.coaStatus;
 });
