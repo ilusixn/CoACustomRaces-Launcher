@@ -352,7 +352,8 @@ class CoaCustom {
   }
 
   // Installs (or updates, with `only`) the chosen modules' files and sets the server switches. Returns installed versions.
-  async applyModules({ serverPath, clientPath, squid, devMenu, races, only = null }) {
+  // `have`: modules whose files are already installed; Apply modules only switches those on or off and does not download them again.
+  async applyModules({ serverPath, clientPath, squid, devMenu, races, only = null, have = {} }) {
     return this.exclusive(async () => {
       const versions = {};
       const want = key => only ? only === key : { squid, devMenu, races }[key];
@@ -363,18 +364,18 @@ class CoaCustom {
         // The module ships with BotsEnable = 0, which keeps every bot on the standard races.
         await this.setConf(serverPath, 'coa_custom_races.conf', 'CoACustomRaces.BotsEnable', races && squid ? 1 : 0);
       }
-      if (want('squid') && addons) versions.squid = await this.installAddon(SOURCES.squidAddon, /\.zip$/i, 'SquidBots addon', addons);
-      if (want('devMenu') && addons) versions.devMenu = await this.installAddon(SOURCES.devMenu, /addon.*\.zip$/i, 'Dev Menu addon', addons);
-      if (want('races') && clientPath) versions.races = await this.installRaces(clientPath);
+      if (want('squid') && !have.squid && addons) versions.squid = await this.installAddon(SOURCES.squidAddon, /\.zip$/i, 'SquidBots addon', addons);
+      if (want('devMenu') && !have.devMenu && addons) versions.devMenu = await this.installAddon(SOURCES.devMenu, /addon.*\.zip$/i, 'Dev Menu addon', addons);
+      if (want('races') && !have.races && clientPath) versions.races = await this.installRaces(clientPath);
       const notes = [];
       // The server half carries the NPCs, ferries and race data, so races without it show nothing in game.
       // An own-server package already carries the races' server half (DBC, SQL, core); only the client files are separate.
       const ownServer = !!serverPath && fs.existsSync(path.join(serverPath, 'Settings/own-server.json'));
-      if (want('races') && !ownServer) {
+      if (want('races') && !have.races && !ownServer) {
         if (!serverPath) notes.push('No server is selected, so only the client was installed. Select your server (Locate server), then update again.');
         else try { versions.races = await this.updateRacesServer(serverPath); } catch (error) { if (only) throw error; notes.push(`Server part skipped: ${error.message}`); }
       }
-      if (want('devMenu')) notes.push('Dev Menu: the addon is installed. Its server part needs a worldserver built with mod-ilusixn-devmenu.');
+      if (want('devMenu') && !have.devMenu) notes.push('Dev Menu: the addon is installed. Its server part needs a worldserver built with mod-ilusixn-devmenu.');
       if (serverPath && !only) notes.push('Restart the server to apply the switches.');
       this.emit('ready', 'Modules applied.');
       // Files the client manifest also ships; the client updater keeps them (main.cjs preserveFile).

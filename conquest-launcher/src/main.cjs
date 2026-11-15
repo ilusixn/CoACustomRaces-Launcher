@@ -655,7 +655,7 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     const info = await clientInfo();
     if (!info.installed && (modules.squid || modules.devMenu || modules.races)) throw new Error('Download or locate the game client first.');
     if (info.installed) { writableClient(info.path); await requireGameClosed(info.path); }
-    const result = await mutateClient(() => coa.applyModules({ serverPath: settings.serverPath, clientPath: info.installed ? info.path : '', ...modules }));
+    const result = await mutateClient(() => coa.applyModules({ serverPath: settings.serverPath, clientPath: info.installed ? info.path : '', ...modules, have: { squid: !!settings.versions?.squid, devMenu: !!settings.versions?.devMenu, races: !!settings.versions?.races } }));
     await persist({ ...settings, modules, customOwned: result.owned || (modules.races ? settings.customOwned : []), versions: { ...settings.versions, ...result.versions } });
     return result;
   });
