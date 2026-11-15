@@ -282,7 +282,7 @@ class CoaCustom {
 
   // Optional core of a Custom Races release: CoA-Custom-V*-Core.zip holding a worldserver.exe built for THIS server's base
   // (the plain Server zip's worldserver.exe is for the CoA-Bots repack and is never used). Boats/elevators need it.
-  // The previous worldserver.exe is kept as worldserver.exe.before-races. Servers stay stopped (caller did stop-all).
+  // The replaced files are kept once in Core/before-races. Servers stay stopped (caller did stop-all).
   async updateRacesCore(root, release) {
     const asset = release.assets.find(a => /^CoA-Custom-V[\d.]+-Core\.zip$/.test(a.name));
     if (!asset) { this.emit('server', 'This release has no core file; the server program was left as it is.'); return false; }
@@ -296,10 +296,13 @@ class CoaCustom {
     const exe = path.join(out, found);
     const head = Buffer.alloc(2); const fd = await fsp.open(exe, 'r'); await fd.read(head, 0, 2, 0); await fd.close();
     if (head.toString() !== 'MZ' || (await fsp.stat(exe)).size < 20 * 2 ** 20) throw new Error('The Custom Races core worldserver.exe is not valid.');
-    const target = path.join(root, 'Core/worldserver.exe');
-    await fsp.copyFile(target, `${target}.before-races`).catch(() => {});
+    // The exe and the DLLs it was built against travel together (its OpenSSL/MySQL/runtime DLLs differ from the base server's).
+    const core = path.join(root, 'Core'); const keep = path.join(core, 'before-races'); await fsp.mkdir(keep, { recursive: true });
     this.emit('server', 'Replacing the server program…');
-    await fsp.copyFile(exe, target);
+    for (const name of (await fsp.readdir(path.dirname(exe))).filter(n => /^worldserver[.]exe$|[.]dll$/i.test(n))) {
+      if (!fs.existsSync(path.join(keep, name)) && fs.existsSync(path.join(core, name))) await fsp.copyFile(path.join(core, name), path.join(keep, name));
+      await fsp.copyFile(path.join(path.dirname(exe), name), path.join(core, name));
+    }
     await fsp.rm(work, { recursive: true, force: true });
     return true;
   }
