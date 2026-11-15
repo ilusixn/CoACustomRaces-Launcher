@@ -363,6 +363,7 @@ class CoaCustom {
         await this.setConf(serverPath, 'coa_custom_races.conf', 'CoACustomRaces.Enable', races ? 1 : 0);
         // The module ships with BotsEnable = 0, which keeps every bot on the standard races.
         await this.setConf(serverPath, 'coa_custom_races.conf', 'CoACustomRaces.BotsEnable', races && squid ? 1 : 0);
+        if (squid) await this.ensureBotNames(serverPath).catch(error => { throw new Error(`Could not prepare the bot names: ${error.message}`); });
       }
       if (want('squid') && !have.squid && addons) versions.squid = await this.installAddon(SOURCES.squidAddon, /\.zip$/i, 'SquidBots addon', addons);
       if (want('devMenu') && !have.devMenu && addons) versions.devMenu = await this.installAddon(SOURCES.devMenu, /addon.*\.zip$/i, 'Dev Menu addon', addons);
@@ -380,6 +381,23 @@ class CoaCustom {
       this.emit('ready', 'Modules applied.');
       // Files the client manifest also ships; the client updater keeps them (main.cjs preserveFile).
       return { versions, owned: want('races') ? ['Data/patch-T.MPQ', 'Data/patch-ZG.MPQ'] : null, notes };
+    });
+  }
+
+  // Bots are created from the names in acore_characters.playerbots_*names. A package built from a character-free
+  // database can have them empty ("No more unused names left", no bots), so load the module's own base SQL when empty.
+  async ensureBotNames(root) {
+    const dir = path.join(root, 'Extras/SquidPlayerbots/sql/characters/base');
+    if (!fs.existsSync(dir)) return false;
+    return this.withDatabase(root, async () => {
+      let loaded = false;
+      for (const table of ['playerbots_names', 'playerbots_guild_names', 'playerbots_arena_team_names']) {
+        const file = path.join(dir, `${table}.sql`);
+        if (!fs.existsSync(file)) continue;
+        const count = Number((await this.sql(root, `SELECT COUNT(*) FROM acore_characters.${table};`).catch(() => '1')).trim());
+        if (count === 0) { await this.sqlFile(root, 'acore_characters', file); loaded = true; }
+      }
+      return loaded;
     });
   }
 
