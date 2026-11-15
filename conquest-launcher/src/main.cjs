@@ -20,6 +20,7 @@ const { GameCredentials } = require('./game-credentials.cjs');
 const { requireGameClosed, isGameRunning, configureRealm } = require('./game-safety.cjs');
 const { createLauncherUpdates } = require('./launcher-updates.cjs');
 const { CoaCustom, networkAddresses, hostnameOk } = require('./coa-custom.cjs');
+const { SquidDashboard } = require('./squid-dashboard.cjs');
 const localTesting = !app.isPackaged && process.env.COA_LOCAL_TEST === '1';
 const electronFetch = (input, init) => net.fetch(input, init);
 config.localDownloadDemo = localTesting && process.env.COA_DOWNLOAD_DEMO === '1';
@@ -66,6 +67,12 @@ let settings = null;
 let settingsFile = '';
 let game = null;
 const embeddedViews = new Map();
+let dashboardTarget = ''; // http://127.0.0.1:<port>/ of the running SquidBots dashboard
+function localDashboardUrl(value) {
+  const url = new URL(value);
+  if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || url.username || url.password || !url.port) throw new Error('The dashboard address must be on 127.0.0.1.');
+  return url;
+}
 let saveQueue = Promise.resolve();
 let issueCache = { loadedAt: 0, issues: [] };
 let addonService = null;
@@ -172,12 +179,17 @@ function openSafeExternal(value) {
 }
 
 function ensureDatabaseView(page = 'database') {
-  if (page !== 'database' && page !== 'armory') throw new Error('Unknown embedded page.');
+  if (page !== 'database' && page !== 'armory' && page !== 'dashboard') throw new Error('Unknown embedded page.');
+  const trusted = (value, label) => page === 'dashboard' ? localDashboardUrl(value) : trustedHttps(value, label);
   let databaseView = embeddedViews.get(page);
-  if (databaseView && !databaseView.webContents.isDestroyed()) return databaseView;
+  if (databaseView && !databaseView.webContents.isDestroyed()) {
+    // The dashboard moves to another port when it restarts: a view on the old address is replaced.
+    if (page !== 'dashboard' || !dashboardTarget || new URL(dashboardTarget).origin === new URL(databaseView.webContents.getURL() || dashboardTarget).origin) return databaseView;
+    window?.contentView.removeChildView(databaseView); databaseView.webContents.close(); embeddedViews.delete(page);
+  }
   if (!window) throw new Error('Launcher window is not ready.');
 
-  const target = trustedHttps(page === 'armory' ? config.links?.armory : config.databaseEmbedUrl || config.links?.database, 'Embedded page URL');
+  const target = page === 'dashboard' ? localDashboardUrl(dashboardTarget) : trustedHttps(page === 'armory' ? config.links?.armory : config.databaseEmbedUrl || config.links?.database, 'Embedded page URL');
   const targetOrigin = target.origin;
   const partition = `coa-${page}`;
   const databaseSession = session.fromPartition(partition);
@@ -205,7 +217,7 @@ function ensureDatabaseView(page = 'database') {
   const contents = databaseView.webContents;
   contents.setWindowOpenHandler(details => {
     try {
-      const url = trustedHttps(details.url, 'Database link');
+      const url = page === 'dashboard' && details.url.startsWith(targetOrigin) ? new URL(details.url) : trustedHttps(details.url, 'Database link');
       if (url.origin === targetOrigin) setImmediate(() => contents.loadURL(url.href).catch(() => {}));
       else setImmediate(() => openSafeExternal(url.href).catch(() => {}));
     } catch {}
@@ -213,7 +225,7 @@ function ensureDatabaseView(page = 'database') {
   });
   contents.on('will-navigate', event => {
     let next;
-    try { next = trustedHttps(event.url, 'Database link'); }
+    try { next = page === 'dashboard' && event.url.startsWith(targetOrigin) ? new URL(event.url) : trustedHttps(event.url, 'Database link'); }
     catch { event.preventDefault(); return; }
     if (next.origin !== targetOrigin) {
       event.preventDefault();
@@ -631,6 +643,9 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     return settings.serverPath;
   };
   const realmAddress = () => settings.realmMode === 'local' ? '127.0.0.1' : settings.realmlist;
+  const dashboard = new SquidDashboard({ coa });
+  app.on('before-quit', () => dashboard.stopSync());
+  const dashboardInfo = async () => ({ ...(await dashboard.info(await requireServer())), newest: await dashboard.newestTag() });
   handle('coa:network', () => networkAddresses());
   handle('coa:create-server', async () => {
     const result = await dialog.showOpenDialog(window, { title: nativeText('Choose an EMPTY folder for your server (about 15 GB)'), properties: ['openDirectory', 'createDirectory'] });
@@ -646,8 +661,13 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     await persist({ ...settings, serverPath: result.filePaths[0], localMode: true });
     return { path: settings.serverPath };
   });
-  handle('coa:start-server', async () => coa.startServer(await requireServer(), realmAddress()));
-  handle('coa:stop-server', async () => coa.stopServer(await requireServer()));
+  handle('coa:start-server', async () => {
+    const root = await requireServer();
+    await coa.startServer(root, realmAddress());
+    // The dashboard runs only while the server runs; a failure here must not fail the server start.
+    if (await dashboard.installedVersion(root)) dashboard.start(root).then(url => { dashboardTarget = url; }, () => {});
+  });
+  handle('coa:stop-server', async () => { const root = await requireServer(); await dashboard.stop(); dashboardTarget = ''; return coa.stopServer(root); });
   handle('coa:apply-modules', async choice => {
     if (!choice || typeof choice !== 'object') throw new Error('Invalid module choice.');
     const modules = { squid: choice.squid === true, devMenu: choice.devMenu === true, races: choice.races === true };
@@ -715,6 +735,16 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
   handle('coa:bot-options', async () => coa.botOptions(await requireServer()));
   handle('coa:set-bot-option', async (key, value) => coa.setBotOption(await requireServer(), String(key), value));
   handle('coa:bot-stats', async () => coa.botStats(await requireServer()));
+  handle('coa:bot-schema', async () => coa.botSchema(await requireServer()));
+  handle('coa:set-bot-schema-option', async (key, value) => coa.setBotSchemaOption(await requireServer(), String(key), value));
+  handle('coa:ah-bot', async () => coa.ahBot(await requireServer()));
+  handle('coa:set-ah-bot', async (field, value) => coa.setAhBot(await requireServer(), String(field), value));
+  handle('coa:dash-info', dashboardInfo);
+  handle('coa:dash-install', async () => { const root = await requireServer(); const result = await dashboard.install(root); return { ...(await dashboardInfo()), notes: result.notes }; });
+  // Starts the dashboard when the server is running and returns its address for the embedded view.
+  handle('coa:dash-open', async () => { const root = await requireServer(); dashboardTarget = await dashboard.start(root); return dashboardInfo(); });
+  handle('coa:dash-stop', async () => { await dashboard.stop(); dashboardTarget = ''; return dashboardInfo(); });
+  handle('coa:dash-browser', async () => { if (!dashboardTarget) throw new Error('The dashboard is not running.'); await shell.openExternal(localDashboardUrl(dashboardTarget).href); });
   handle('coa:reset-bots', async () => coa.resetBots(await requireServer(), realmAddress()));
   // ---- races and bot races ----
   handle('coa:races', () => coa.races());

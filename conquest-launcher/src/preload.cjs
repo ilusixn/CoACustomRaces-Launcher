@@ -80,6 +80,8 @@ contextBridge.exposeInMainWorld('launcher', Object.freeze({
   coaAccounts: () => invoke('coa:accounts'), coaCreateAccount: data => invoke('coa:create-account', data), coaDeleteServer: () => invoke('coa:delete-server'), coaDeleteClient: () => invoke('coa:delete-client'),
   coaRaces: () => invoke('coa:races'),
   coaBotRaces: () => invoke('coa:bot-races'),
+  coaBotSchema: () => invoke('coa:bot-schema'), coaSetBotSchemaOption: (key, value) => invoke('coa:set-bot-schema-option', key, value), coaAhBot: () => invoke('coa:ah-bot'), coaSetAhBot: (field, value) => invoke('coa:set-ah-bot', field, value),
+  coaDashInfo: () => invoke('coa:dash-info'), coaDashInstall: () => invoke('coa:dash-install'), coaDashOpen: () => invoke('coa:dash-open'), coaDashStop: () => invoke('coa:dash-stop'), coaDashBrowser: () => invoke('coa:dash-browser'),
   coaSetBotRaces: allowed => invoke('coa:set-bot-races', allowed),
   onCoaProgress: callback => {
     const listener = (_event, status) => callback(status);

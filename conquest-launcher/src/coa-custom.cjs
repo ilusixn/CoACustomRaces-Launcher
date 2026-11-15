@@ -662,6 +662,63 @@ class CoaCustom {
     return { key, value: text };
   }
 
+  // The module's own description of its main options (Core/configs/modules/playerbots.conf.settings.json: groups, title,
+  // description, type, default), with the value now in the server's playerbots.conf. null when the server has no schema file.
+  async botSchema(root) {
+    const file = path.join(root, 'Core/configs/modules/playerbots.conf.settings.json');
+    let schema;
+    try { schema = JSON.parse(await fsp.readFile(file, 'utf8')); } catch { return null; }
+    if (!schema || !Array.isArray(schema.settings) || !schema.settings.length) return null;
+    const groups = schema.groups && typeof schema.groups === 'object' ? schema.groups : {};
+    const settings = [];
+    for (const item of schema.settings) {
+      if (!item || typeof item.key !== 'string' || !/^AiPlayerbot\.[A-Za-z0-9_.]+$/.test(item.key) || !['bool', 'int', 'float', 'string'].includes(item.type)) continue;
+      const raw = await this.readConf(root, 'playerbots.conf', item.key);
+      const value = raw === null ? item.default : item.type === 'bool' ? ['1', 'true', 'yes'].includes(String(raw).toLowerCase()) : item.type === 'string' ? raw : Number(raw);
+      settings.push({ key: item.key, group: item.group || 'other', title: String(item.title || item.key), description: String(item.description || ''), type: item.type, default: item.default, min: typeof item.min === 'number' ? item.min : null, max: typeof item.max === 'number' ? item.max : null, coa: item.coa === true, value });
+    }
+    return { module: String(schema.module || ''), version: String(schema.version || ''), groups, settings };
+  }
+
+  // Saves one option the schema knows (also one that is not active in playerbots.conf yet). Applied after a restart.
+  async setBotSchemaOption(root, key, value) {
+    const schema = await this.botSchema(root);
+    const item = schema?.settings.find(o => o.key === key);
+    if (!item) return this.setBotOption(root, key, value);
+    let text;
+    if (item.type === 'bool') text = value === true || value === '1' || value === 1 || value === 'true' ? '1' : '0';
+    else if (item.type === 'string') { text = String(value); if (/[\r\n"]/.test(text) || text.length > 300) throw new Error('That value is not allowed.'); text = `"${text}"`; }
+    else {
+      const number = Number(value);
+      if (!Number.isFinite(number) || (item.type === 'int' && !Number.isInteger(number))) throw new Error('That value is not a valid number.');
+      if ((item.min !== null && number < item.min) || (item.max !== null && number > item.max)) throw new Error(`The value must be between ${item.min ?? '-'} and ${item.max ?? '-'}.`);
+      text = String(number);
+    }
+    await this.setConf(root, 'playerbots.conf', key, text);
+    return { key, value: item.type === 'bool' ? text === '1' : item.type === 'string' ? text.slice(1, -1) : Number(text) };
+  }
+
+  // Auction house bot (mod-ah-bot-plus, config mod_ahbot.conf): selling on/off, items per cycle, buying on/off.
+  static AH_KEYS = { enable: 'AuctionHouseBot.Enable', itemsPerCycle: 'AuctionHouseBot.ItemsPerCycle', buyer: 'AuctionHouseBot.Buyer.Enabled' };
+  async ahBot(root) {
+    const flag = async (key, fallback) => { const v = await this.readConf(root, 'mod_ahbot.conf', key); return v === null ? fallback : ['1', 'true', 'yes'].includes(v.toLowerCase()); };
+    const per = await this.readConf(root, 'mod_ahbot.conf', CoaCustom.AH_KEYS.itemsPerCycle);
+    const present = (await this.readConf(root, 'mod_ahbot.conf', 'AuctionHouseBot.CoA.ObtainableItemsOnly')) !== null;
+    return { supported: present, enable: await flag(CoaCustom.AH_KEYS.enable, true), buyer: await flag(CoaCustom.AH_KEYS.buyer, false), itemsPerCycle: Number(per) || 150 };
+  }
+  async setAhBot(root, field, value) {
+    const key = CoaCustom.AH_KEYS[field];
+    if (!key) throw new Error('Unknown auction house bot option.');
+    let text;
+    if (field === 'itemsPerCycle') {
+      const number = Number(value);
+      if (!Number.isInteger(number) || number < 1 || number > 2000) throw new Error('Items per cycle must be a whole number from 1 to 2000.');
+      text = String(number);
+    } else text = value === true || value === '1' || value === 1 || value === 'true' ? 'true' : 'false';
+    await this.setConf(root, 'mod_ahbot.conf', key, text);
+    return this.ahBot(root);
+  }
+
   // Bots on the server's database, by race. null when the database is not running.
   async botStats(root) {
     if (!(await this.dbReady(root))) return null;

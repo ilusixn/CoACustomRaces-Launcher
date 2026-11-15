@@ -60,7 +60,7 @@ const articles = [
   { id: 'community', category: 'COMMUNITY', title: 'Your adventure. Our community.', summary: 'Find your guild, share your stories, and stay connected.', image: 'trailer.jpg', body: ['Azeroth is better together. Join the CoA Custom Races community on Discord.', 'Use the Discord button to meet other players and stay connected.'] }
 ];
 function launcherCreditsHtml() {
-  return lh`<section class="launcher-credits"><h4>${t('Credits & license')}</h4><p>Originally developed by Duff (Duff-SPP) as Conquest Launcher.</p><p>${t('GPLv3 with author-attribution terms. This software comes with no warranty. Third-party assets retain their own rights.')}</p><button class="ghost-button" data-action="view-license">${t('License & attribution')}</button><button class="ghost-button" data-external="source">${t('Source code')}</button></section>`;
+  return lh`<section class="launcher-credits"><h4>${t('Credits & license')}</h4><p>Originally developed by Duff (Duff-SPP) as Conquest Launcher.</p><p>${t('The SquidBots dashboard on the Bots page is by Zyth45 (MIT licence).')}</p><p>${t('GPLv3 with author-attribution terms. This software comes with no warranty. Third-party assets retain their own rights.')}</p><button class="ghost-button" data-action="view-license">${t('License & attribution')}</button><button class="ghost-button" data-external="source">${t('Source code')}</button></section>`;
 }
 
 async function showLegalNotices() {
@@ -236,7 +236,7 @@ const changelogEntries = [
   }
 ];
 const emptyConfig = { name: 'CoA Custom Races', links: {} };
-const defaultSettings = { language: 'en', languageSelected: false, startPage: 'home', launchBehavior: 'close', autoLaunchAfterUpdate: true, autoUpdate: true, addonCleanupDismissed: false, rememberClient: true, hdPatches: true, wineCompatibility: false, autoLoginGame: false, downloadLimitMBps: 0, graphicsCompatibility: false, disableGraphicsEnhancements: false, reducedMotion: false, sound: true, installPath: '' };
+const defaultSettings = { language: 'en', languageSelected: false, startPage: 'home', launchBehavior: 'keep-open', launchBehaviorMigrated: true, autoLaunchAfterUpdate: true, autoUpdate: true, addonCleanupDismissed: false, rememberClient: true, hdPatches: true, wineCompatibility: false, autoLoginGame: false, downloadLimitMBps: 0, graphicsCompatibility: false, disableGraphicsEnhancements: false, reducedMotion: false, sound: true, installPath: '' };
 let previewSettings;
 try { previewSettings = { ...defaultSettings, ...JSON.parse(localStorage.getItem('conquest-preview-settings') || '{}') }; } catch { previewSettings = { ...defaultSettings }; }
 const api = window.launcher || {
@@ -431,8 +431,9 @@ async function loadRaces() {
 }
 function botsPage() {
   if (!state.settings.serverPath) return lh`<div class="content-page">${titleBlock(t('Bot races'), t('Choose which races SquidBots spawn as.'))}<div class="empty-panel"><h2>${t('No server yet')}</h2><p>${t('Create or locate your server on the Home page first.')}</p></div></div>`;
-  const tabs = lh`<div class="tabs" role="tablist"><button role="tab" class="tab ${state.botTab !== 'dashboard' ? 'active' : ''}" data-action="coa-bot-tab" data-tab="races">${t('Bot races')}</button><button role="tab" class="tab ${state.botTab === 'dashboard' ? 'active' : ''}" data-action="coa-bot-tab" data-tab="dashboard">${t('SquidBots dashboard')}</button></div>`;
-  if (state.botTab === 'dashboard') return botDashboard(tabs);
+  const tabs = botTabs();
+  if (state.botTab === 'settings') return botSettings(tabs);
+  if (state.botTab === 'live') return botLive(tabs);
   const bots = state.coaBotRaces;
   const excluded = new Set(bots?.excluded || []); const crashing = new Set(bots?.crashing || []);
   const cards = (state.coaRaces || []).filter(r => !/skyborne/i.test(r.name)).map(r => {
@@ -441,6 +442,78 @@ function botsPage() {
     return lh`<label class="bot-race ${blocked ? 'blocked' : ''}"><input type="checkbox" data-bot-race="${r.ids.join(',')}" ${on ? 'checked' : ''} ${blocked ? 'disabled' : ''}><span><strong>${escape(r.name)}</strong><small>${escape(raceIdsText(r))} · ${escape(r.side)}${blocked ? ' · ' + t('crashes bots, always off') : ''}</small></span></label>`;
   }).join('');
   return lh`<div class="content-page">${titleBlock(t('Bot races'), t('Checked races are the ones SquidBots spawn as. Saved to your server; new bots use it after a server restart.'), state.settings.modules?.squid ? 'SQUIDBOTS ON' : 'SQUIDBOTS OFF')}${tabs}<div class="button-row"><button class="secondary-button" data-action="coa-bots-all">${t('Select all')}</button><button class="secondary-button" data-action="coa-bots-none">${t('Unselect all')}</button><button class="gold-button" data-action="coa-bots-save">${t('Save')}</button><button class="secondary-button danger-button" data-action="coa-bots-reset-ask">${t('Reset bots')}</button></div><p class="page-description">${t('Bots keep the race they were created with. After changing the checked races, press Reset bots so every bot is recreated with them.')}</p>${!bots || !state.coaRaces ? lh`<p class="page-description">${t('Loading…')}</p>` : lh`<div class="bot-grid">${cards}</div>`}</div>`;
+}
+// ---- Bots page: settings from the module's schema, auction house bot, SquidBots dashboard (Zyth45, MIT) ----
+const botSliderRanges = { 'AiPlayerbot.MinRandomBots': [0, 3000], 'AiPlayerbot.MaxRandomBots': [0, 3000], 'AiPlayerbot.MaxAddedBots': [0, 200] };
+function botTabs() {
+  const tab = (id, label) => lh`<button role="tab" class="tab ${(state.botTab || 'races') === id ? 'active' : ''}" data-action="coa-bot-tab" data-tab="${id}">${label}</button>`;
+  return lh`<div class="tabs" role="tablist">${tab('races', t('Bot races'))}${tab('settings', t('Bot settings'))}${tab('live', t('Live dashboard'))}</div>`;
+}
+function schemaRange(o) {
+  const own = botSliderRanges[o.key];
+  const min = o.min !== null ? o.min : own ? own[0] : null; const max = o.max !== null ? o.max : own ? own[1] : null;
+  return min !== null && max !== null && max > min ? { min, max } : null;
+}
+function schemaRow(o) {
+  const range = schemaRange(o);
+  const shown = value => o.type === 'bool' ? (value ? t('On') : t('Off')) : String(value);
+  const step = o.type === 'float' ? (range && range.max <= 1 ? '0.05' : '0.1') : '1';
+  let control;
+  if (o.type === 'bool') control = lh`<input class="switch" type="checkbox" data-bot-schema="${escape(o.key)}" data-type="bool" ${o.value ? 'checked' : ''}>`;
+  else if (o.type === 'string') control = lh`<input type="text" class="bot-text" data-bot-schema="${escape(o.key)}" data-type="string" value="${escape(o.value)}">`;
+  else control = lh`${range ? lh`<input type="range" class="bot-slider" data-bot-schema="${escape(o.key)}" data-type="${o.type}" min="${range.min}" max="${range.max}" step="${step}" value="${escape(o.value)}">` : ''}<input type="number" class="bot-number" data-bot-schema="${escape(o.key)}" data-type="${o.type}" step="${step}" ${range ? `min="${range.min}" max="${range.max}"` : ''} value="${escape(o.value)}">`;
+  const isDefault = String(o.value) === String(o.default);
+  return lh`<div class="bot-opt schema-opt"><div><strong>${escape(o.title)}</strong>${o.coa ? lh`<span class="bot-coa">CoA</span>` : ''}<small>${escape(o.description)}</small><small class="bot-default">${t('Default')}: ${escape(shown(o.default))}</small></div><div class="schema-control">${control}<button class="schema-reset" data-action="coa-schema-default" data-key="${escape(o.key)}" ${isDefault ? 'disabled' : ''}>${t('Reset to default')}</button></div></div>`;
+}
+function ahPanel() {
+  const ah = state.ahBot;
+  if (!ah || !ah.supported) return '';
+  return lh`<h3 class="bot-heading">${t('Auction house bot')}</h3><p class="page-description">${t('The auction house bot lists items for sale so the auction houses are never empty. Changes apply after a server restart.')}</p><div class="bot-quick"><label class="setting-row"><span class="setting-title">${t('Auction house bot sells items')}</span><input class="switch" type="checkbox" data-ah="enable" ${ah.enable ? 'checked' : ''}></label><label class="setting-row"><span class="setting-title">${t('Auction house bot buys from players')}</span><input class="switch" type="checkbox" data-ah="buyer" ${ah.buyer ? 'checked' : ''}></label><label class="setting-row"><span class="setting-title">${t('Items listed per cycle')}</span><input class="bot-number" type="number" min="1" max="2000" data-ah="itemsPerCycle" value="${escape(ah.itemsPerCycle)}"></label></div>`;
+}
+function botSettings(tabs) {
+  const schema = state.botSchema;
+  if (schema === undefined) return lh`<div class="content-page">${titleBlock(t('Bot settings'), t('Settings are saved to your server and apply after a server restart.'))}${tabs}<p class="page-description">${t('Loading…')}</p></div>`;
+  if (!schema) return botDashboard(tabs); // no schema file on this server: the raw option list
+  const q = (state.botSchemaQuery || '').toLowerCase();
+  const stats = state.botStats;
+  const raceName = id => (state.coaRaces || []).find(r => r.ids.includes(id))?.name || `#${id}`;
+  const statsBox = !stats ? lh`<p class="page-description">${t('Start the server to see how many bots exist and which races they use.')}</p>`
+    : lh`<p class="page-description">${lt`${stats.total} bots, ${stats.online} online.`}</p><div class="bot-stats">${stats.races.map(r => lh`<span><strong>${escape(raceName(r.race))}</strong> ${r.count}</span>`).join('')}</div>`;
+  const order = [...Object.keys(schema.groups), ...new Set(schema.settings.map(o => o.group))].filter((g, i, all) => all.indexOf(g) === i);
+  const groups = order.map(group => {
+    const items = schema.settings.filter(o => o.group === group && (!q || `${o.key} ${o.title} ${o.description}`.toLowerCase().includes(q)));
+    if (!items.length) return '';
+    return lh`<h3 class="bot-heading">${escape(schema.groups[group] || group)}</h3><div class="bot-opts">${items.map(schemaRow).join('')}</div>`;
+  }).join('');
+  return lh`<div class="content-page">${titleBlock(t('Bot settings'), t('Settings are saved to your server and apply after a server restart.'), state.settings.modules?.squid ? 'SQUIDBOTS ON' : 'SQUIDBOTS OFF')}${tabs}<div class="button-row"><button class="secondary-button" data-action="coa-bot-refresh">${icon('refresh')}${t('Refresh')}</button><button class="secondary-button danger-button" data-action="coa-bots-reset-ask">${t('Reset bots')}</button></div>${statsBox}${ahPanel()}<label class="search-box">${icon('search')}<input id="bot-schema-search" type="text" placeholder="${t('Search settings')}" value="${escape(state.botSchemaQuery || '')}"></label>${groups || lh`<p class="page-description">${t('No setting matches your search.')}</p>`}</div>`;
+}
+async function loadBotSettings() {
+  try {
+    [state.botSchema, state.ahBot] = await Promise.all([api.coaBotSchema().catch(() => null), api.coaAhBot().catch(() => null)]);
+    state.botStats = await api.coaBotStats().catch(() => null);
+    await loadRaces();
+    if (!state.botSchema) { state.botOpts = state.botOpts || await api.coaBotOptions().catch(() => []); }
+  } catch (error) { toast(tm(error.message)); state.botSchema = null; }
+  if (state.page === 'bots' && state.botTab === 'settings') render();
+}
+function botLive(tabs) {
+  const d = state.dash;
+  const head = titleBlock(t('Live dashboard'), t('The SquidBots dashboard by Zyth45: bots on the map, their cards, chat, loot, the economy and the server\'s health.'), state.settings.modules?.squid ? 'SQUIDBOTS ON' : 'SQUIDBOTS OFF');
+  const wrap = body => lh`<div class="content-page">${head}${tabs}${body}</div>`;
+  if (!d) return wrap(lh`<p class="page-description">${t('Loading…')}</p>`);
+  const newer = d.newest && d.newest !== d.pinnedTag;
+  const versionLine = d.installed ? (newer ? lt`Installed: v${d.installed}. This launcher installs the tested tag ${d.pinnedTag}; the newest tag on GitHub is ${d.newest}.` : lt`Installed: v${d.installed}. This launcher installs the tested tag ${d.pinnedTag}.`) : (newer ? lt`Not installed. This launcher installs the tested tag ${d.pinnedTag} (the newest tag on GitHub is ${d.newest}).` : lt`Not installed. This launcher installs the tested tag ${d.pinnedTag}.`);  const update = d.installed && d.updateAvailable ? lh`<button class="secondary-button" data-action="coa-dash-install" ${state.dashBusy ? 'disabled' : ''}>${icon('refresh')}${t('Update the dashboard')}</button>` : '';
+  if (!d.installed) return wrap(lh`<div class="empty-panel"><span class="empty-emblem">${icon('shield')}</span><h2>${t('Install the SquidBots dashboard')}</h2><p>${t('A live view of your bots: where they are, what they do, chat, loot, the auction house and server health. It runs on your PC while your server runs, and only reads the server\'s database.')}</p><p class="page-description">${escape(versionLine)}</p>${d.error ? lh`<p class="page-description">${escape(tm(d.error))}</p>` : ''}<button class="gold-button" data-action="coa-dash-install" ${state.dashBusy ? 'disabled' : ''}>${state.dashBusy ? t('Installing…') : t('Install the dashboard')}</button></div>`);
+  if (!d.running) return wrap(lh`<div class="empty-panel"><span class="empty-emblem">${icon('shield')}</span><h2>${t('The dashboard runs while your server runs')}</h2><p>${t('Start your server on the Home page, then open this tab again.')}</p>${d.error ? lh`<p class="page-description">${escape(tm(d.error))}</p>` : ''}<p class="page-description">${escape(versionLine)}</p><div class="button-row"><button class="secondary-button" data-action="coa-dash-retry">${icon('refresh')}${t('Try again')}</button>${update}</div></div>`);
+  return lh`<div class="content-page database-page">${head}${tabs}<div class="database-toolbar"><span class="database-state" id="database-status">${icon('shield')}<span>${t('Loading…')}</span></span><div class="button-row"><button class="secondary-button" data-action="database-reload">${icon('refresh')}${t('Reload')}</button><button class="secondary-button" data-action="coa-dash-browser">${t('Open in browser')}</button>${update}</div></div><div class="database-frame"><div class="database-placeholder">${icon('shield')}<strong>${t('SquidBots dashboard')}</strong><span>${escape(versionLine)}</span></div><div class="database-viewport" id="database-viewport"></div></div></div>`;
+}
+async function loadDash() {
+  try { state.dash = await api.coaDashInfo(); } catch (error) { state.dash = { installed: '', pinnedTag: '', error: error.message }; }
+  render();
+  if (state.dash.installed && !state.dash.running && state.page === 'bots' && state.botTab === 'live') {
+    try { state.dash = await api.coaDashOpen(); } catch (error) { state.dash = { ...state.dash, error: error.message }; }
+    if (state.page === 'bots' && state.botTab === 'live') render();
+  }
 }
 const quickBotOptions = [
   ['CoACustomRaces.BotsEnable', 'Bots use custom races', 'switch'], ['AiPlayerbot.RandomBotAutologin', 'Random bots log in', 'switch'], ['AiPlayerbot.MinRandomBots', 'Minimum bots online', 'number'], ['AiPlayerbot.MaxRandomBots', 'Maximum bots online', 'number'],
@@ -463,7 +536,7 @@ function botDashboard(tabs) {
 async function loadBotDashboard() {
   try { [state.botOpts, state.botStats] = await Promise.all([api.coaBotOptions(), api.coaBotStats().catch(() => null)]); await loadRaces(); }
   catch (error) { toast(tm(error.message)); state.botOpts = []; }
-  if (state.page === 'bots' && state.botTab === 'dashboard') render();
+  if (state.page === 'bots' && state.botTab === 'settings') render();
 }
 async function loadBotRaces() {
   await loadRaces();
@@ -485,7 +558,8 @@ function servicePage(key) {
   const connected = !!state.config.links[key];
   return lh`<div class="content-page">${titleBlock(t(service.title), t(service.description) || t(service.body))}<div class="empty-panel"><span class="empty-emblem">${icon(service.icon)}</span><h2>${t(service.heading)}</h2><p>${t(service.body)}</p><button class="gold-button" data-external="${key}" ${connected ? '' : 'disabled'}>${t(service.action)} ${icon('external')}</button><div class="service-details"><span>Project service</span><span>${connected ? t('Connected') : t('Not connected yet')}</span></div></div>${key === 'store' ? launcherI18n.html('<div class="feature-row"><div class="feature-tile">') + icon('user') + launcherI18n.html('<h3>Your account</h3><p>Your own project identity and purchase history.</p></div><div class="feature-tile">') + icon('store') + launcherI18n.html('<h3>Your catalog</h3><p>Products and availability from your project.</p></div><div class="feature-tile">') + icon('shield') + launcherI18n.html('<h3>Your checkout</h3><p>Payments handled by your connected website.</p></div></div>') : ''}</div>`;
 }
-function isEmbeddedPage() { return state.page === 'database' || state.page === 'armory'; }
+function isEmbeddedPage() { return state.page === 'database' || state.page === 'armory' || (state.page === 'bots' && state.botTab === 'live' && state.dash?.running === true); }
+function embeddedKey() { return state.page === 'bots' ? 'dashboard' : state.page; }
 function databasePage() {
   if (state.page === 'armory') return armoryPage();
   const embedded = !!window.launcher;
@@ -529,11 +603,11 @@ async function loadIssues(force = false) {
 function updateDatabaseStatus() {
   const target = document.getElementById('database-status');
   if (!target) return;
-  const saved = embeddedStatuses.get(state.page) || { state: 'loading', message: '' };
+  const saved = embeddedStatuses.get(embeddedKey()) || { state: 'loading', message: '' };
   state.databaseStatus = saved.state; state.databaseMessage = saved.message;
-  const labels = state.page === 'armory' ? { loading: t('Loading…'), ready: t('Armory'), error: state.databaseMessage || t('Could not load Armory') } : { loading: t('Loading Ascension Database…'), ready: t('Ascension Database connected'), error: state.databaseMessage || t('Database could not be loaded') };
+  const labels = embeddedKey() === 'dashboard' ? { loading: t('Loading…'), ready: t('SquidBots dashboard'), error: state.databaseMessage || t('Could not load the dashboard') } : state.page === 'armory' ? { loading: t('Loading…'), ready: t('Armory'), error: state.databaseMessage || t('Could not load Armory') } : { loading: t('Loading Ascension Database…'), ready: t('Ascension Database connected'), error: state.databaseMessage || t('Database could not be loaded') };
   target.className = `database-state ${state.databaseStatus}`;
-  target.innerHTML = lh`${icon(state.databaseStatus === 'error' ? 'info' : state.page === 'armory' ? 'shield' : 'database')}<span>${escape(labels[state.databaseStatus] || labels.loading)}</span>`;
+  target.innerHTML = lh`${icon(state.databaseStatus === 'error' ? 'info' : state.page === 'armory' || embeddedKey() === 'dashboard' ? 'shield' : 'database')}<span>${escape(labels[state.databaseStatus] || labels.loading)}</span>`;
 }
 function syncDatabaseView() {
   if (!window.launcher || !isEmbeddedPage() || modal.open) return;
@@ -542,7 +616,7 @@ function syncDatabaseView() {
   const bounds = host.getBoundingClientRect();
   if (bounds.width < 100 || bounds.height < 100) return;
   guarded(async () => {
-    await api.databaseView({ visible: true, page: state.page, bounds: { x: bounds.left, y: bounds.top, width: bounds.width, height: bounds.height } });
+    await api.databaseView({ visible: true, page: embeddedKey(), bounds: { x: bounds.left, y: bounds.top, width: bounds.width, height: bounds.height } });
   });
 }
 function showIssue(number) {
@@ -1013,7 +1087,25 @@ document.addEventListener('change', async event => {
   try { await api.coaSetBotOption(input.dataset.botOpt, value); toast(t('Saved. Restart the server to apply.')); if (state.botOpts) { const o = state.botOpts.find(x => x.key === input.dataset.botOpt); if (o) o.value = value; } }
   catch (error) { toast(tm(error.message)); }
 });
+document.addEventListener('change', async event => {
+  const input = event.target.closest?.('[data-bot-schema]');
+  if (input) {
+    const item = state.botSchema?.settings.find(o => o.key === input.dataset.botSchema); if (!item) return;
+    const value = input.dataset.type === 'bool' ? input.checked : input.value;
+    try {
+      const saved = await api.coaSetBotSchemaOption(item.key, value); item.value = saved.value; toast(t('Saved. Restart the server to apply.'));
+      for (const twin of main.querySelectorAll('[data-bot-schema]')) if (twin.dataset.botSchema === item.key && twin !== input && twin.type !== 'checkbox') twin.value = saved.value;
+      const reset = main.querySelector('[data-action="coa-schema-default"][data-key="' + item.key + '"]'); if (reset) reset.disabled = String(saved.value) === String(item.default);
+    } catch (error) { toast(tm(error.message)); input.value = item.value; if (input.type === 'checkbox') input.checked = !!item.value; }
+    return;
+  }
+  const ah = event.target.closest?.('[data-ah]'); if (!ah) return;
+  try { state.ahBot = await api.coaSetAhBot(ah.dataset.ah, ah.type === 'checkbox' ? ah.checked : ah.value); toast(t('Saved. Restart the server to apply.')); } catch (error) { toast(tm(error.message)); render(); }
+});
 document.addEventListener('input', event => {
+  const slider = event.target.closest?.('[data-bot-schema]');
+  if (slider && slider.type === 'range') { const number = [...main.querySelectorAll('input[type="number"]')].find(n => n.dataset.botSchema === slider.dataset.botSchema); if (number) number.value = slider.value; return; }
+  if (event.target.id === 'bot-schema-search') { state.botSchemaQuery = event.target.value; const at = event.target.selectionStart; render(); const box = document.getElementById('bot-schema-search'); box?.focus(); box?.setSelectionRange(at, at); return; }
   if (event.target.id !== 'bot-opt-search') return;
   state.botOptQuery = event.target.value; const at = event.target.selectionStart; render(); const box = document.getElementById('bot-opt-search'); box?.focus(); box?.setSelectionRange(at, at);
 });
@@ -1047,8 +1139,8 @@ const actions = {
   wiki: () => showService('wiki'), discord: () => showService('discord'), support: () => showService('support'),
   welcome: () => showArticle('welcome'), trailer: showTrailer,
   'database-reload': async () => {
-    embeddedStatuses.set(state.page, { state: 'loading', message: '' }); updateDatabaseStatus();
-    await api.reloadDatabase(state.page);
+    embeddedStatuses.set(embeddedKey(), { state: 'loading', message: '' }); updateDatabaseStatus();
+    await api.reloadDatabase(embeddedKey());
     requestAnimationFrame(syncDatabaseView);
   },
   'refresh-issues': () => loadIssues(true),
@@ -1101,8 +1193,26 @@ const actions = {
     state.coaStatus = key === 'server' ? (result.upToDate ? t('Server is up to date.') : lt`Server updated to ${result.version}, ${result.applied} database updates applied.`) : [lt`${moduleNames[key]} updated.`, ...(result?.notes || []).filter(n => !n.startsWith('Dev Menu')).map(n => tm(n))].join(' ');
     state.coaUpdates = null; state.settings = await api.bootstrap().then(data => data.settings); render();
   }),
-  'coa-bot-tab': element => { state.botTab = element.dataset.tab; if (state.botTab === 'dashboard' && !state.botOpts) loadBotDashboard(); render(); },
-  'coa-bot-refresh': () => { state.botOpts = null; loadBotDashboard(); render(); },
+  'coa-bot-tab': element => {
+    state.botTab = element.dataset.tab; render();
+    if (state.botTab === 'settings' && state.botSchema === undefined) loadBotSettings();
+    if (state.botTab === 'live') loadDash();
+  },
+  'coa-bot-refresh': () => { state.botOpts = null; state.botSchema = undefined; render(); loadBotSettings(); },
+  'coa-schema-default': async element => {
+    const item = state.botSchema?.settings.find(o => o.key === element.dataset.key); if (!item) return;
+    try { const saved = await api.coaSetBotSchemaOption(item.key, item.default); item.value = saved.value; toast(t('Saved. Restart the server to apply.')); render(); } catch (error) { toast(tm(error.message)); }
+  },
+  'coa-dash-install': async () => {
+    state.dashBusy = true; render();
+    try {
+      const result = await api.coaDashInstall(); state.dash = result;
+      if (result.notes?.length) toast(tm(result.notes[0]));
+    } catch (error) { toast(tm(error.message)); }
+    state.dashBusy = false; if (state.page === 'bots' && state.botTab === 'live') loadDash();
+  },
+  'coa-dash-retry': () => { state.dash = null; render(); loadDash(); },
+  'coa-dash-browser': () => api.coaDashBrowser().catch(error => toast(tm(error.message))),
   'coa-bots-reset-ask': () => openModal(lh`${modalHeader(t('Reset all bots?'), '')}<div class="modal-body"><p>${t('This stops the server, deletes every bot with its guilds and arena teams, and restarts it once so the deletion can run (it can take several minutes). Your own characters are backed up first and are not touched. Start the server afterwards: new bots are created with your current race and level settings.')}</p></div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button danger-button" data-action="coa-bots-reset-go">${t('Reset bots')}</button></div>`, 'backup-dialog'),
   'coa-bots-reset-go': async () => {
     closeModal();
@@ -1212,9 +1322,9 @@ main.addEventListener('scroll', () => { if (isEmbeddedPage()) requestAnimationFr
 api.onDatabaseStatus(status => {
   if (!status || typeof status !== 'object') return;
   const page = status.page || 'database';
-  if (page !== 'database' && page !== 'armory') return;
+  if (page !== 'database' && page !== 'armory' && page !== 'dashboard') return;
   embeddedStatuses.set(page, { state: status.state === 'ready' || status.state === 'error' ? status.state : 'loading', message: typeof status.message === 'string' ? status.message : '' });
-  if (page !== state.page) return;
+  if (page !== embeddedKey()) return;
   state.databaseStatus = status.state === 'ready' || status.state === 'error' ? status.state : 'loading';
   state.databaseMessage = typeof status.message === 'string' ? status.message : '';
   updateDatabaseStatus();
@@ -1257,3 +1367,8 @@ actions['review-old-addons'] = () => {
   render();
 };
 window.addEventListener('DOMContentLoaded', start);
+// The dashboard follows the server: if it stops or starts while the Live dashboard tab is open, the tab follows.
+setInterval(async () => {
+  if (!window.launcher || state.page !== 'bots' || state.botTab !== 'live' || state.dashBusy || !state.dash) return;
+  try { const info = await api.coaDashInfo(); if (!!info.running !== !!state.dash.running) { state.dash = info; render(); if (!info.running) loadDash(); } } catch {}
+}, 8000);
