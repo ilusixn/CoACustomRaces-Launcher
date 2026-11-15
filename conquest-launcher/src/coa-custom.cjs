@@ -327,6 +327,9 @@ class CoaCustom {
       for (const name of await fsp.readdir(from).catch(() => [])) if (pick(name)) { await fsp.mkdir(to, { recursive: true }); await fsp.copyFile(path.join(from, name), path.join(to, name)); }
     };
     await copyAll(path.join(files, 'dbc'), path.join(root, 'Data/dbc'), n => /\.dbc$/i.test(n));
+    // With custom races on, the core loads Data/dbc_races/<file> before Data/dbc/<file>: stale copies there hide the new races ("Wrong race N").
+    const present = new Set(await fsp.readdir(path.join(root, 'Data/dbc_races')).catch(() => []));
+    await copyAll(path.join(files, 'dbc'), path.join(root, 'Data/dbc_races'), n => present.has(n));
     await copyAll(path.join(files, 'dbc_clientset'), path.join(root, 'Data/dbc_clientset'), n => /\.dbc$/i.test(n));
     for (const sub of ['maps', 'vmaps', 'mmaps']) await copyAll(path.join(files, 'server_data', sub), path.join(root, 'Data', sub)); // V2.0.1: map 907 (Fading Island)
     const conf = path.join(root, 'Core/configs/modules');
