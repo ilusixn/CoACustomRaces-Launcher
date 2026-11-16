@@ -21,6 +21,7 @@ const { requireGameClosed, isGameRunning, configureRealm } = require('./game-saf
 const { createLauncherUpdates } = require('./launcher-updates.cjs');
 const { CoaCustom, networkAddresses, hostnameOk } = require('./coa-custom.cjs');
 const { SquidDashboard } = require('./squid-dashboard.cjs');
+const { CommunityAddons } = require('./community-addons.cjs');
 const localTesting = !app.isPackaged && process.env.COA_LOCAL_TEST === '1';
 const electronFetch = (input, init) => net.fetch(input, init);
 config.localDownloadDemo = localTesting && process.env.COA_DOWNLOAD_DEMO === '1';
@@ -621,6 +622,23 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     const result = await addonService.uninstall(packageId, info.path, removeModified === true);
     return { result, catalog: await addonService.list(info.path) };
   }));
+  // ---- community addons (one data file: src/community-addons.json) ----
+  const community = new CommunityAddons({ fetchImpl: electronFetch, notify: status => sendStatus('community:progress', status), cacheFile: path.join(app.getPath('userData'), 'community-addons-cache.json') });
+  const communityClient = async () => { const info = await clientInfo(); return info.addonsReady || info.installed ? info.path : ''; };
+  handle('community:list', async force => community.list(await communityClient(), { check: true, force: force === true }));
+  handle('community:install', async id => mutateClient(async () => {
+    if (game) throw new Error('Close the game before installing addons.');
+    const client = await communityClient(); if (!client) throw new Error('Choose your installed client first.');
+    const result = await community.install(String(id), client);
+    return { result, list: await community.list(client, { check: false }) };
+  }));
+  handle('community:remove', async id => mutateClient(async () => {
+    if (game) throw new Error('Close the game before removing addons.');
+    const client = await communityClient(); if (!client) throw new Error('Choose your installed client first.');
+    const result = await community.remove(String(id), client);
+    return { result, list: await community.list(client, { check: false }) };
+  }));
+  handle('community:open', async (id, kind) => { const entry = community.entry(String(id)); const url = kind === 'license' ? entry.licenseUrl || entry.homepage : entry.homepage; await shell.openExternal(url); });
   handle('launcher:clear-cache', async () => mutateClient(async () => {
     if (game) throw new Error('Close the game before clearing its cache.');
     return clearClientCache(settings?.installPath);

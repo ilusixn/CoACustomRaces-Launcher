@@ -1,0 +1,196 @@
+{
+  "schema": 1,
+  "addons": [
+    {
+      "id": "coa-item-search",
+      "name": "CoA Item Search",
+      "description": "Search every item of the server by name or ID and add it to your bags with one click (a GM command, so it needs a GM account on your own server). Type /items in game.",
+      "author": "ilusixn",
+      "license": "Author's own addon, no separate licence file",
+      "homepage": "https://github.com/ilusixn/coa-item-search",
+      "source": {
+        "type": "release",
+        "repo": "ilusixn/coa-item-search",
+        "assets": [
+          {
+            "pattern": "^coa-item-search-[\\d.]+-coa-custom-[\\d.]+\\.zip$"
+          }
+        ]
+      },
+      "archive": {
+        "format": "zip",
+        "base": "AddOns"
+      },
+      "targets": [
+        "Interface/AddOns/CoAItemSearch",
+        "Interface/AddOns/CoAItemSearch_Data"
+      ],
+      "sizeBytes": 4146533,
+      "unpackedBytes": 21000000,
+      "notes": "Folders: CoAItemSearch and CoAItemSearch_Data (the item list, loaded on demand). Tested with release v1.1."
+    },
+    {
+      "id": "coa-teleport",
+      "name": "CoA Teleports",
+      "description": "Browse every teleport (stock and CoA) and click to go. GM only, so it needs a GM account on your own server. Type /tp in game.",
+      "author": "ilusixn",
+      "license": "Author's own addon, no separate licence file",
+      "homepage": "https://github.com/ilusixn/COA-Teleport",
+      "source": {
+        "type": "release",
+        "repo": "ilusixn/COA-Teleport",
+        "assets": [
+          {
+            "pattern": "^COA-Teleport-V[\\d.]+\\.zip$"
+          }
+        ]
+      },
+      "archive": {
+        "format": "zip",
+        "base": "AddOns"
+      },
+      "targets": [
+        "Interface/AddOns/CoA_Teleports"
+      ],
+      "sizeBytes": 63395,
+      "unpackedBytes": 200000,
+      "notes": "Folder: CoA_Teleports."
+    },
+    {
+      "id": "questie-x-coa",
+      "name": "Questie-X for CoA",
+      "description": "Quest helper: quest givers, objectives and turn-ins on the map and minimap, a quest arrow and a tracker, with a quest database generated from a Conquest of Azeroth server.",
+      "author": "Xurkon and the Questie team (Questie-X); Dandenas (CoA package)",
+      "license": "MIT (Questie-X, copyright Xurkon). Unofficial compatibility package.",
+      "licenseUrl": "https://github.com/Xurkon/Questie-X",
+      "homepage": "https://github.com/Dandenas/coa-questie",
+      "source": {
+        "type": "release",
+        "repo": "Dandenas/coa-questie",
+        "assets": [
+          {
+            "pattern": "^coa-questie_v[\\d.]+\\.zip$"
+          }
+        ]
+      },
+      "archive": {
+        "format": "zip",
+        "base": "AddOns"
+      },
+      "targets": [
+        "Interface/AddOns/Questie-X",
+        "Interface/AddOns/Questie-X-WotLKDB",
+        "Interface/AddOns/Questie-X-AscensionDB",
+        "Interface/AddOns/Questie-X-CoADB"
+      ],
+      "conflicts": [
+        "Questie",
+        "Questie-335",
+        "PE-Questie"
+      ],
+      "sizeBytes": 44747131,
+      "unpackedBytes": 174000000,
+      "warnings": [
+        "Installs four folders that belong together: Questie-X, Questie-X-WotLKDB, Questie-X-AscensionDB and Questie-X-CoADB.",
+        "Another Questie (Questie, Questie-335, PE-Questie) must be removed first: two quest helpers fight each other. If you also use Zygor or TomTom, turn off one of the quest arrows."
+      ],
+      "notes": "Tested with release 1.5.1."
+    },
+    {
+      "id": "elvui-coa",
+      "name": "ElvUI for CoA",
+      "description": "A complete interface replacement (unit frames, bars, bags, chat) built for Conquest of Azeroth, with CoA class resource bars, a Who search and server messages.",
+      "author": "Elv and Bunny (ElvUI); Paddy187 (CoA build)",
+      "license": "No licence file in the package; ElvUI belongs to its authors and the Tukui project. See the repository.",
+      "homepage": "https://github.com/Paddy187/ElvUI_CoA",
+      "source": {
+        "type": "release",
+        "repo": "Paddy187/ElvUI_CoA",
+        "assets": [
+          {
+            "pattern": "^ElvUI_CoA\\.zip$"
+          }
+        ]
+      },
+      "archive": {
+        "format": "zip",
+        "base": "AddOns"
+      },
+      "targets": [
+        "Interface/AddOns/ElvUI",
+        "Interface/AddOns/ElvUI_AddOnSkins",
+        "Interface/AddOns/ElvUI_OptionsUI",
+        "Interface/AddOns/ElvUI_ProfileInstaller",
+        "Interface/AddOns/ElvUI_CoACXtra",
+        "Interface/AddOns/ElvUI_CoAResources"
+      ],
+      "sizeBytes": 15924075,
+      "unpackedBytes": 36000000,
+      "warnings": [
+        "ElvUI replaces most of the default interface. Remove any other ElvUI or Tukui first.",
+        "The package also holds two profile scripts (GenerateProfiles.bat and .ps1). The launcher never installs scripts: ElvUI itself works without them."
+      ],
+      "notes": "Tested with release update-9."
+    },
+    {
+      "id": "willitdie",
+      "name": "WillItDie",
+      "description": "Predicts damage-over-time damage on your target and can learn direct spells, abilities and auto-attacks on custom CoA realms (3.3.5a port).",
+      "author": "Joe Greive; 3.3.5a port by Duff-SPP",
+      "license": "MIT (copyright Joe Greive)",
+      "licenseUrl": "https://github.com/Duff-SPP/WillItDie---Woltk-Addon-Acension-Coa/blob/main/LICENSE",
+      "homepage": "https://github.com/Duff-SPP/WillItDie---Woltk-Addon-Acension-Coa",
+      "source": {
+        "type": "tarball",
+        "repo": "Duff-SPP/WillItDie---Woltk-Addon-Acension-Coa",
+        "commit": "a8a86cf1d34a1af8dde48a3cae2bff2e89b5330a",
+        "versionLabel": "0.2.1-wotlk"
+      },
+      "archive": {
+        "format": "tar.gz",
+        "base": "AddOns",
+        "strip": 1
+      },
+      "targets": [
+        "Interface/AddOns/WillItDie"
+      ],
+      "sizeBytes": 25537,
+      "unpackedBytes": 150000,
+      "notes": "The repository has no releases: the launcher installs one fixed commit and never moves to a newer one by itself."
+    },
+    {
+      "id": "azeroth-fr",
+      "name": "Azeroth_FR (French translation)",
+      "description": "French translation of Conquest of Azeroth: spells and talents of the 21 classes, quests, items, creatures, dialogues, interface windows, achievements and the character screens. This is a FRENCH translation: it puts the game in French while you play. Command: /azfr.",
+      "author": "LePetitDan and contributors (a players' project, not linked to Blizzard or the CoA team)",
+      "license": "MIT for the addon's code. The game texts it displays are NOT covered by that licence (they belong to Blizzard and to the CoA authors). Read the repository's LICENSE.",
+      "licenseUrl": "https://github.com/LePetitDan/Azeroth_FR/blob/main/LICENSE",
+      "homepage": "https://github.com/LePetitDan/Azeroth_FR",
+      "source": {
+        "type": "release",
+        "repo": "LePetitDan/Azeroth_FR",
+        "assets": [
+          {
+            "pattern": "^Azeroth_FR-[\\d.]+\\.zip$"
+          }
+        ]
+      },
+      "archive": {
+        "format": "zip",
+        "base": "client"
+      },
+      "targets": [
+        "Interface/AddOns/Azeroth_FR*",
+        "Interface/PTRXML"
+      ],
+      "sizeBytes": 26012274,
+      "unpackedBytes": 92000000,
+      "warnings": [
+        "It is a translation: the game text is shown in French.",
+        "Also installs Interface/PTRXML (two files that translate the screens before you enter the world). In the game launcher's addon clean-up, leave the translation unticked, or it is removed.",
+        "Only the release zip is downloaded. The author's installer programs (.exe and Linux) are never downloaded or run."
+      ],
+      "notes": "Newest stable release (pre-releases are skipped). Installs every folder named Azeroth_FR* from the zip, so new data folders of later versions are picked up. Tested with v1.1.1."
+    }
+  ]
+}

@@ -314,3 +314,8 @@ body.auth-locked .main-nav, body.auth-locked .utilitybar, body.auth-locked #main
 .coa-bar.wait i{width:35%!important;animation:coa-wait 1.2s ease-in-out infinite alternate}
 @keyframes coa-wait{from{margin-left:0}to{margin-left:65%}}
 .schema-opt{grid-template-columns:1fr 330px}.schema-control{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}.bot-slider{width:130px;accent-color:#49a39f}.bot-text{width:200px}.bot-coa{margin-left:8px;padding:1px 6px;border:1px solid #49a39f66;border-radius:6px;font-size:9px;color:#9fd8d3;vertical-align:middle}.bot-default{opacity:.75}.schema-reset{background:none;border:0;color:#9fd8d3;font-size:10px;cursor:pointer;text-decoration:underline;padding:2px 4px}.schema-reset:disabled{opacity:.35;cursor:default;text-decoration:none}
+
+.community-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.community-card .addon-warning{margin:4px 0;padding:6px 8px;border-left:3px solid #d9a441;background:rgba(217,164,65,.1);font-size:12px}
+.community-card .addon-meta{margin:2px 0;font-size:12px;opacity:.8}
+.community-card .button-row{margin-top:8px}

@@ -69,3 +69,15 @@ The Bots page of this edition can download and show the SquidBots dashboard, htt
     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
+
+## Community addons (Addons tab)
+
+The Addons tab can download and install community addons from their authors' GitHub pages (nothing is bundled in this repository; the list is `conquest-launcher/src/community-addons.json`). The launcher installs only addon files, never programs or scripts, and removes only what it installed. Authors and licences:
+
+- **CoA Item Search** and **CoA Teleports**: ilusixn, https://github.com/ilusixn/coa-item-search and https://github.com/ilusixn/COA-Teleport (author's own addons).
+- **Questie-X for CoA**: Questie-X by Xurkon and the Questie team (MIT, copyright Xurkon), https://github.com/Xurkon/Questie-X; CoA compatibility package by Dandenas, https://github.com/Dandenas/coa-questie.
+- **ElvUI for CoA**: ElvUI by Elv and Bunny / the Tukui project; CoA build by Paddy187, https://github.com/Paddy187/ElvUI_CoA (no licence file in the package; see the repository).
+- **WillItDie**: Joe Greive (MIT, copyright Joe Greive); 3.3.5a port by Duff (Duff-SPP), https://github.com/Duff-SPP/WillItDie---Woltk-Addon-Acension-Coa (installed from one pinned commit).
+- **Azeroth_FR** (French translation): LePetitDan and contributors, https://github.com/LePetitDan/Azeroth_FR (MIT for the addon's code; the game texts it displays are not covered by that licence).
+
+Each addon keeps its own licence; see the linked repositories.

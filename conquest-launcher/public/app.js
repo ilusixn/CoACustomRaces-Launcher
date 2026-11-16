@@ -60,7 +60,7 @@ const articles = [
   { id: 'community', category: 'COMMUNITY', title: 'Your adventure. Our community.', summary: 'Find your guild, share your stories, and stay connected.', image: 'trailer.jpg', body: ['Azeroth is better together. Join the CoA Custom Races community on Discord.', 'Use the Discord button to meet other players and stay connected.'] }
 ];
 function launcherCreditsHtml() {
-  return lh`<section class="launcher-credits"><h4>${t('Credits & license')}</h4><p>Originally developed by Duff (Duff-SPP) as Conquest Launcher.</p><p>${t('The SquidBots dashboard on the Bots page is by Zyth45 (MIT licence).')}</p><p>${t('GPLv3 with author-attribution terms. This software comes with no warranty. Third-party assets retain their own rights.')}</p><button class="ghost-button" data-action="view-license">${t('License & attribution')}</button><button class="ghost-button" data-external="source">${t('Source code')}</button></section>`;
+  return lh`<section class="launcher-credits"><h4>${t('Credits & license')}</h4><p>Originally developed by Duff (Duff-SPP) as Conquest Launcher.</p><p>${t('The SquidBots dashboard on the Bots page is by Zyth45 (MIT licence).')}</p><p>${t("Community addons are installed from their authors' GitHub pages. Authors and licences are listed in THIRD_PARTY_NOTICES.md and on each addon card.")}</p><p>${t('GPLv3 with author-attribution terms. This software comes with no warranty. Third-party assets retain their own rights.')}</p><button class="ghost-button" data-action="view-license">${t('License & attribution')}</button><button class="ghost-button" data-external="source">${t('Source code')}</button></section>`;
 }
 
 async function showLegalNotices() {
@@ -271,7 +271,7 @@ const api = window.launcher || {
   onGameExit: () => () => {},
 };
 const state = {
-  page: 'home', newsTab: 'latest', settingsTab: 'launcher', addonTab: 'browse',
+  page: 'home', community: null, communityError: '', communityBusy: '', communityPct: 0, communityStatus: '', newsTab: 'latest', settingsTab: 'launcher', addonTab: 'browse',
   config: emptyConfig, settings: defaultSettings, client: { installed: false, path: '', running: false }, version: '0.2.0',
   issues: [], issuesLoading: false, issuesError: '', issueQuery: '', databaseStatus: 'loading', databaseMessage: '',
   addons: [], addonLoading: false, addonError: '', addonQuery: '', addonCategory: 'all', addonFolderCount: 0,
@@ -693,11 +693,48 @@ function addonCardsHtml() {
 function addonCategories() {
   return [...new Set(state.addons.map(addon => addon.category).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
+// ---- Addons tab: community addons (one data file, installed and removed by the launcher) ----
+function communityEta(seconds) {
+  if (!seconds || seconds < 1) return '';
+  return seconds < 90 ? lt`about ${Math.max(1, Math.round(seconds))} s left` : lt`about ${Math.round(seconds / 60)} min left`;
+}
+function communityStatusLabel(row) {
+  if (row.status === 'installed') return t('Installed');
+  if (row.status === 'update') return t('Update available');
+  if (row.status === 'foreign') return t('Already present, not installed by the launcher');
+  return t('Not installed');
+}
+function communityCard(row) {
+  const busy = state.communityBusy === row.id;
+  const locked = !!state.communityBusy || !(state.client.addonsReady || state.client.installed);
+  const version = row.installedVersion ? lt`Installed: ${row.installedVersion}${row.status === 'update' ? lt` · newest: ${row.latestVersion}` : ''}` : (row.latestVersion ? lt`Version: ${row.latestVersion}${row.pinned ? lt` (one tested version)` : ''}` : '');
+  const buttons = row.status === 'not-installed' || row.status === 'foreign'
+    ? lh`<button class="gold-button" data-action="community-install" data-id="${escape(row.id)}" ${locked || row.status === 'foreign' ? 'disabled' : ''}>${t('Install')}</button>`
+    : lh`${row.status === 'update' ? lh`<button class="gold-button" data-action="community-install" data-id="${escape(row.id)}" ${locked ? 'disabled' : ''}>${t('Update')}</button>` : lh`<button class="secondary-button" data-action="community-install" data-id="${escape(row.id)}" ${locked ? 'disabled' : ''}>${t('Reinstall')}</button>`}<button class="secondary-button danger-button" data-action="community-remove" data-id="${escape(row.id)}" ${locked ? 'disabled' : ''}>${t('Remove')}</button>`;
+  const progress = busy ? lh`<div class="coa-bar on ${state.communityPct ? '' : 'wait'}"><i id="community-bar-fill" style="width:${state.communityPct || 0}%"></i></div><p class="page-description" id="community-status">${escape(state.communityStatus || '')}</p>` : '';
+  return lh`<article class="addon-card community-card"><div class="addon-card-top"><div class="addon-emblem">${icon('addons')}</div><div class="addon-card-title"><strong>${escape(row.name)}</strong><small>${t('by')} ${escape(row.author)}</small></div><span class="addon-status ${row.status}">${escape(communityStatusLabel(row))}</span></div><p class="addon-description">${escape(row.description)}</p><p class="addon-meta">${escape(version)} · ${escape(formatSize(row.sizeBytes))} · ${t('Folders')}: ${escape(row.folders.join(', '))}</p><p class="addon-meta">${t('Licence')}: ${escape(row.license)}</p>${row.warnings.map(w => lh`<p class="addon-warning">${escape(w)}</p>`).join('')}${row.checkError ? lh`<p class="addon-meta">${escape(tm(row.checkError))}</p>` : ''}<div class="button-row">${buttons}<button class="schema-reset" data-action="community-open" data-id="${escape(row.id)}" data-kind="homepage">${t('Homepage')}</button><button class="schema-reset" data-action="community-open" data-id="${escape(row.id)}" data-kind="license">${t('Licence')}</button></div>${progress}</article>`;
+}
+function communityPage() {
+  const rows = state.community;
+  const body = state.communityError ? lh`<div class="addon-empty"><strong>${t('Community addons could not be loaded')}</strong><span>${escape(tm(state.communityError))}</span></div>`
+    : !rows ? lh`<div class="addon-empty issue-loading">${icon('refresh')}<strong>${t('Checking for updates…')}</strong></div>`
+    : lh`<div class="community-grid">${rows.map(communityCard).join('')}</div>`;
+  const tabs = ['browse', 'installed', 'community'].map(id => lh`<button role="tab" class="tab ${state.addonTab === id ? 'active' : ''}" data-addon-tab="${id}">${id === 'browse' ? t('Browse addons') : id === 'installed' ? t('Installed addons') : t('Community addons')}</button>`).join('');
+  const clientLine = (state.client.addonsReady || state.client.installed) ? '' : lh`<p class="page-description">${t('Choose your game client to install community addons.')}</p>`;
+  return lh`<div class="content-page addon-page">${titleBlock(t('Community addons'), t('Addons made by the community, each from its author\'s GitHub. The launcher installs only addon files (never programs or scripts), remembers what it installed and removes only that. Close the game before installing.'), t('COMMUNITY'))}<div class="tabs" role="tablist">${tabs}</div>${clientLine}<div class="button-row"><button class="secondary-button" data-action="community-refresh" ${state.communityBusy ? 'disabled' : ''}>${icon('refresh')}${t('Check for updates')}</button></div>${body}</div>`;
+}
+async function loadCommunity(force = false) {
+  state.communityError = '';
+  try { state.community = await api.communityList(force); } catch (error) { state.communityError = error.message; state.community = null; }
+  if (state.page === 'addons' && state.addonTab === 'community') render();
+}
+
 function addonsPage() {
+  if (state.addonTab === 'community') return communityPage();
   const installedCount = state.addons.filter(addon => addon.status !== 'not-installed').length;
   const categories = addonCategories();
   const clientStatus = (state.client.addonsReady || state.client.installed) ? lt`${installedCount} installed · ${state.addons.filter(addon => addon.catalog !== false).length} catalog packages · ${state.addonFolderCount} addon folders` : lt`${state.addons.filter(addon => addon.catalog !== false).length || '—'} catalog packages · ${state.addonFolderCount || '—'} addon folders · select a client to install`;
-  return lh`<div class="content-page addon-page">${titleBlock(t('Addons'), t('Browse addon folders and versions. Use Rescan to verify files against the catalog. Addons inside MPQ patches and in-game enabled status are not inspected. Your addons are never installed automatically.'), t('LOCAL CATALOG'))}<div class="tabs" role="tablist" aria-label="Addon categories"><button role="tab" aria-selected="${state.addonTab === 'browse'}" class="tab ${state.addonTab === 'browse' ? 'active' : ''}" data-addon-tab="browse">Browse addons</button><button role="tab" aria-selected="${state.addonTab === 'installed'}" class="tab ${state.addonTab === 'installed' ? 'active' : ''}" data-addon-tab="installed">Installed addons${installedCount ? lh` <span class="tab-count">${installedCount}</span>` : ''}</button></div><div class="addon-toolbar"><label class="search-box addon-search">${icon('search')}<input id="addon-search" aria-label="Search addons" placeholder="Search addons..." value="${escape(state.addonQuery)}"></label><label class="addon-category"><span>Category</span><select id="addon-category" aria-label="Addon category"><option value="all">All categories</option>${categories.map(category => lh`<option value="${escape(category)}" ${state.addonCategory === category ? 'selected' : ''}>${escape(category)}</option>`).join('')}</select></label><div class="addon-toolbar-actions"><button class="secondary-button" data-action="refresh-addons">${icon('refresh')}Rescan</button><button class="secondary-button" data-action="open-addons-folder" ${(state.client.addonsReady || state.client.installed) ? '' : 'disabled'}>${icon('folder')}AddOns folder</button>${!(state.client.addonsReady || state.client.installed) ? lh`<button class="gold-button" data-action="choose-client">${icon('folder')}Locate game</button>` : ''}</div></div><div class="addon-summary"><span class="status-dot"></span><span>${escape(clientStatus)}</span>${state.client.running ? launcherI18n.html('<strong>Close the game to change addons.</strong>') : ''}</div>${state.addonWarning ? lh`<p role="status">${escape(tm(state.addonWarning))}</p>` : ''}<div id="addon-results" class="addon-grid">${addonCardsHtml()}</div></div>`;
+  return lh`<div class="content-page addon-page">${titleBlock(t('Addons'), t('Browse addon folders and versions. Use Rescan to verify files against the catalog. Addons inside MPQ patches and in-game enabled status are not inspected. Your addons are never installed automatically.'), t('LOCAL CATALOG'))}<div class="tabs" role="tablist" aria-label="Addon categories"><button role="tab" aria-selected="${state.addonTab === 'browse'}" class="tab ${state.addonTab === 'browse' ? 'active' : ''}" data-addon-tab="browse">Browse addons</button><button role="tab" aria-selected="${state.addonTab === 'installed'}" class="tab ${state.addonTab === 'installed' ? 'active' : ''}" data-addon-tab="installed">Installed addons${installedCount ? lh` <span class="tab-count">${installedCount}</span>` : ''}</button><button role="tab" class="tab" data-addon-tab="community">${t('Community addons')}</button></div><div class="addon-toolbar"><label class="search-box addon-search">${icon('search')}<input id="addon-search" aria-label="Search addons" placeholder="Search addons..." value="${escape(state.addonQuery)}"></label><label class="addon-category"><span>Category</span><select id="addon-category" aria-label="Addon category"><option value="all">All categories</option>${categories.map(category => lh`<option value="${escape(category)}" ${state.addonCategory === category ? 'selected' : ''}>${escape(category)}</option>`).join('')}</select></label><div class="addon-toolbar-actions"><button class="secondary-button" data-action="refresh-addons">${icon('refresh')}Rescan</button><button class="secondary-button" data-action="open-addons-folder" ${(state.client.addonsReady || state.client.installed) ? '' : 'disabled'}>${icon('folder')}AddOns folder</button>${!(state.client.addonsReady || state.client.installed) ? lh`<button class="gold-button" data-action="choose-client">${icon('folder')}Locate game</button>` : ''}</div></div><div class="addon-summary"><span class="status-dot"></span><span>${escape(clientStatus)}</span>${state.client.running ? launcherI18n.html('<strong>Close the game to change addons.</strong>') : ''}</div>${state.addonWarning ? lh`<p role="status">${escape(tm(state.addonWarning))}</p>` : ''}<div id="addon-results" class="addon-grid">${addonCardsHtml()}</div></div>`;
 }
 function renderAddonCatalog() {
   const target = document.getElementById('addon-results');
@@ -1145,6 +1182,18 @@ const actions = {
   },
   'refresh-issues': () => loadIssues(true),
   'refresh-addons': () => loadAddons(true, true),
+  'community-refresh': () => loadCommunity(true),
+  'community-open': button => api.communityOpen(button.dataset.id, button.dataset.kind),
+  'community-install': async button => {
+    state.communityBusy = button.dataset.id; state.communityPct = 0; state.communityStatus = ''; render();
+    try { const out = await api.communityInstall(button.dataset.id); state.community = out.list; toast(lt`Installed ${out.result.version}`); }
+    finally { state.communityBusy = ''; render(); }
+  },
+  'community-remove': async button => {
+    state.communityBusy = button.dataset.id; state.communityStatus = ''; render();
+    try { const out = await api.communityRemove(button.dataset.id); state.community = out.list; toast(t('Removed')); }
+    finally { state.communityBusy = ''; render(); }
+  },
   'open-addons-folder': () => api.openAddonsFolder(),
   'report-bug': showBugReport,
   'submit-bug': submitBugForm,
@@ -1269,6 +1318,15 @@ main.addEventListener('input', event => {
 modalContent.addEventListener('change', event => {
   if (event.target.name === 'realm-mode' && event.target.dataset.address) document.getElementById('realm-address').value = event.target.dataset.address;
 });
+api.onCommunityProgress?.(status => {
+  if (!status) return;
+  const pct = status.total ? Math.floor(status.done / status.total * 100) : 0;
+  const eta = status.total && status.eta ? ' · ' + communityEta(status.eta) : '';
+  const size = status.total ? ` ${formatSize(status.done)} / ${formatSize(status.total)}` : '';
+  state.communityPct = pct; state.communityStatus = `${tm(status.message || '')}${size}${eta}`;
+  const fill = document.getElementById('community-bar-fill'); if (fill) { fill.style.width = pct + '%'; fill.parentElement.className = 'coa-bar on' + (pct ? '' : ' wait'); }
+  const line = document.getElementById('community-status'); if (line) line.textContent = state.communityStatus;
+});
 api.onCoaProgress?.(status => {
   if (!status) return;
   const pct = status.total ? ` ${Math.floor(status.done / status.total * 100)}% (${(status.done / 2 ** 30).toFixed(2)} / ${(status.total / 2 ** 30).toFixed(2)} GB)` : '';
@@ -1291,7 +1349,7 @@ document.addEventListener('click', event => {
   else if (button.dataset.article) showArticle(button.dataset.article);
   else if (button.dataset.settingsTab) showSettings(button.dataset.settingsTab);
   else if (button.dataset.newsTab) { state.newsTab = button.dataset.newsTab; render(); }
-  else if (button.dataset.addonTab) { state.addonTab = button.dataset.addonTab; render(); }
+  else if (button.dataset.addonTab) { state.addonTab = button.dataset.addonTab; render(); if (state.addonTab === 'community' && !state.community) guarded(() => loadCommunity()); }
   else if (button.dataset.external) guarded(() => api.external(button.dataset.external));
   else if (actions[button.dataset.action]) guarded(() => actions[button.dataset.action](button));
 });
