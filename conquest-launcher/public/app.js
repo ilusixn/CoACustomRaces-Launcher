@@ -69,6 +69,12 @@ async function showLegalNotices() {
 }
 
 const changelogEntries = [
+  { version: '1.0.1', items: [
+    'Added a Server page: move your server to another folder or drive, see its ports and state, manage backups and change popular world settings.',
+    "Added community addons to the Addons tab: install, update and remove addons from their authors' GitHub pages.",
+    'The server folder is now checked when you create a server: network drives and OneDrive folders are refused.',
+    'The launcher updates itself from GitHub releases.'
+  ] },
   { version: '1.0.0', items: [
     'CoA Custom Races edition by ilusixn, based on Conquest Launcher by Duff (Duff-SPP).',
     'Added Create server: downloads the latest CoA server build and sets it up.',
@@ -271,7 +277,7 @@ const api = window.launcher || {
   onGameExit: () => () => {},
 };
 const state = {
-  page: 'home', community: null, communityError: '', communityBusy: '', communityPct: 0, communityStatus: '', newsTab: 'latest', settingsTab: 'launcher', addonTab: 'browse',
+  page: 'home', serverTab: 'overview', serverInfo: null, serverSize: null, serverOldSize: null, serverBackups: null, serverWorld: undefined, serverWorldError: '', serverWorldQuery: '', community: null, communityError: '', communityBusy: '', communityPct: 0, communityStatus: '', newsTab: 'latest', settingsTab: 'launcher', addonTab: 'browse',
   config: emptyConfig, settings: defaultSettings, client: { installed: false, path: '', running: false }, version: '0.2.0',
   issues: [], issuesLoading: false, issuesError: '', issueQuery: '', databaseStatus: 'loading', databaseMessage: '',
   addons: [], addonLoading: false, addonError: '', addonQuery: '', addonCategory: 'all', addonFolderCount: 0,
@@ -364,7 +370,7 @@ async function showRealm() {
   openModal(lh`${modalHeader(t('Realmlist'), t('How players reach your server'))}<div class="modal-body">${option('local', t('Local'), t('Only this PC plays (127.0.0.1).'), '127.0.0.1')}${option('lan', t('LAN play'), lan ? `${t('Players on your home network join')} ${lan}` : t('No LAN address found on this PC.'), lan)}${option('hamachi', 'LogMeIn Hamachi', ham ? `${t('Friends in your Hamachi network join')} ${ham}` : t('Hamachi is not running. Install and join a network first.'), ham)}${option('custom', t('Join a friend'), t('Play on someone else\'s server: enter their LAN or Hamachi IP.'), s.realmMode === 'custom' ? s.realmlist : '')}<label class="form-label" for="realm-address">${t('Address')}</label><input type="text" id="realm-address" value="${escape(s.realmlist || '127.0.0.1')}" spellcheck="false"><div class="info-box">${icon('info')}<span>${t('Hosting? Friends set "Join a friend" with your address. Allow worldserver and authserver through Windows Firewall (ports 3724 and 8085).')} <button class="link-button" data-action="coa-link" data-link="hamachi">LogMeIn Hamachi</button></span></div></div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button" data-action="coa-realm-save">${t('Save')}</button></div>`);
 }
 function formatSize(bytes) { return bytes > 2 ** 30 ? (bytes / 2 ** 30).toFixed(2) + ' GB' : (bytes / 2 ** 20).toFixed(1) + ' MB'; }
-const backupReasons = { 'before-reset': 'Before a bot reset', manual: 'Manual', 'before-update': 'Before a server update', 'before-restore': 'Before a restore' };
+const backupReasons = { 'before-reset': 'Before a bot reset', manual: 'Manual', 'before-update': 'Before a server update', 'before-restore': 'Before a restore', 'before-move': 'Before moving the server' };
 async function showBackups(notice = '') {
   if (!state.settings.serverPath) { toast(t('Create or locate your server first.')); return; }
   let list = [];
@@ -392,7 +398,7 @@ function racesLabel(base) {
 }
 async function coaRun(label, action) {
   state.coaBusy = true; state.coaStatus = label; state.coaPct = 0; render();
-  try { return await action(); } finally { state.coaBusy = false; state.coaPct = 0; if (state.page === 'updates') render(); }
+  try { return await action(); } finally { state.coaBusy = false; state.coaPct = 0; if (['updates', 'server'].includes(state.page)) render(); }
 }
 // ---- CoA Custom Races pages: Updates, Races, Bots ----
 async function showAccounts(notice = '') {
@@ -402,6 +408,69 @@ async function showAccounts(notice = '') {
 const moduleNames = { server: 'CoA server', squid: 'SquidBots addon', devMenu: 'ilusixn Dev Menu', races: 'CoA Custom Races' };
 const moduleRepos = { server: 'Corfirean/coa-server-build', squid: 'Zyth45/squidbots-addon', devMenu: 'ilusixn/ilusixn-dev-menu', races: 'ilusixn/CustomRacesCoa' };
 function raceIdsText(race) { return race.ids.join(' / '); }
+// ---- Server page: location (move), state and ports, backups, popular world settings, danger zone ----
+function serverUptime(startedAt) {
+  if (!startedAt) return '';
+  const minutes = Math.max(1, Math.round((Date.now() - startedAt) / 60000));
+  return minutes < 90 ? lt`${minutes} min` : lt`${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+}
+function serverTabs() {
+  const tab = (id, label) => lh`<button role="tab" class="tab ${(state.serverTab || 'overview') === id ? 'active' : ''}" data-action="server-tab" data-tab="${id}">${label}</button>`;
+  return lh`<div class="tabs" role="tablist">${tab('overview', t('Overview'))}${tab('backups', t('Backups'))}${tab('world', t('World settings'))}</div>`;
+}
+function serverOverview() {
+  const info = state.serverInfo; const s = state.settings;
+  if (!info) return lh`<p class="page-description">${t('Loading…')}</p>`;
+  const drive = info.drive.total ? lt`${info.drive.root} ${formatSize(info.drive.free)} free of ${formatSize(info.drive.total)}` : info.drive.root;
+  const size = state.serverSize ? formatSize(state.serverSize.bytes) : lh`<button class="link-button" data-action="server-size">${t('Calculate size')}</button>`;
+  const running = info.running === null ? t('Unknown') : info.running ? t('Running') : t('Stopped');
+  const version = info.foreign ? t('Created from another server build') : info.version || t('Unknown');
+  const old = info.oldPath ? lh`<div class="info-box server-old">${icon('info')}<span>${t('Your previous server folder is still here, untouched:')} <strong>${escape(info.oldPath)}</strong> ${state.serverOldSize ? '(' + escape(formatSize(state.serverOldSize.bytes)) + ')' : lh`<button class="link-button" data-action="server-old-size">${t('Calculate size')}</button>`}</span><button class="secondary-button danger-button" data-action="server-delete-old-ask">${t('Delete old copy')}</button><button class="secondary-button" data-action="server-forget-old">${t('Keep it, hide this')}</button></div>` : '';
+  const row = (label, value) => lh`<div class="server-row"><span class="server-label">${label}</span><span class="server-value">${value}</span></div>`;
+  const busy = !!state.coaBusy;
+  const launcher = state.launcherUpdate || { phase: 'idle', message: '' };
+  const status = busy ? lh`<div class="coa-bar on ${state.coaPct ? '' : 'wait'}"><i id="coa-bar-fill" style="width:${state.coaPct || 0}%"></i></div><div id="coa-status" class="coa-status" role="status">${escape(state.coaStatus || '')}</div>` : lh`<div id="coa-status" class="coa-status" role="status">${escape(state.coaStatus || '')}</div>`;
+  return lh`${old}<section class="server-card"><h3 class="bot-heading">${t('Location')}</h3>${row(t('Folder'), lh`<span class="server-path">${escape(s.serverPath)}</span>`)}${row(t('Drive'), escape(drive))}${row(t('Server size'), size)}<div class="button-row"><button class="secondary-button" data-action="server-open-folder">${icon('folder')}${t('Open folder')}</button><button class="gold-button" data-action="server-move" ${busy || info.running ? 'disabled' : ''}>${icon('download')}${t('Move server to another folder or drive')}</button><button class="secondary-button" data-action="coa-locate" ${busy ? 'disabled' : ''}>${t('Locate another server')}</button><button class="secondary-button" data-action="server-forget-ask" ${busy || info.running ? 'disabled' : ''}>${t('Forget this server')}</button></div><p class="page-description">${info.running ? t('Stop the server to move or forget it.') : t('Moving copies the server, checks the copy, and only then switches. The old folder stays until you delete it. Forgetting does not delete any files.')}</p></section>
+  <section class="server-card"><h3 class="bot-heading">${t('Server')}</h3>${row(t('Version'), escape(version))}${row(t('State'), escape(running) + (info.startedAt ? ' · ' + escape(serverUptime(info.startedAt)) : ''))}${row(t('Realm'), info.realm ? escape(`${info.realm.name} (${info.realm.address})`) : escape(t(s.realmMode === 'local' ? 'Local' : s.realmMode === 'lan' ? 'LAN play' : s.realmMode === 'hamachi' ? 'Hamachi' : 'Custom') + ': ' + (s.realmMode === 'local' ? '127.0.0.1' : s.realmlist)))}${row(t('Ports'), lh`${t('Login')} ${info.ports.auth} · ${t('World')} ${info.ports.world} · MySQL ${info.ports.mysql} · RA ${info.ports.ra} <button class="link-button" data-action="server-ports" ${info.running ? 'disabled' : ''}>${t('Change ports')}</button>`)}<div class="button-row"><button class="secondary-button" data-action="coa-start" ${busy ? 'disabled' : ''}>${icon('play')}${t('Start')}</button><button class="secondary-button" data-action="coa-stop" ${busy ? 'disabled' : ''}>${t('Stop')}</button><button class="secondary-button" data-action="server-restart" ${busy ? 'disabled' : ''}>${icon('refresh')}${t('Restart')}</button><button class="secondary-button" data-action="coa-realm">${icon('globe')}${t('Realmlist')}</button></div>${status}</section>
+  <section class="server-card"><h3 class="bot-heading">${t('Launcher')}</h3>${row(t('Version'), escape(state.version || ''))}${row(t('Updates'), escape(launcher.message ? tm(launcher.message) : t('Ready to check launcher updates.')))}<div class="button-row"><button class="secondary-button" data-action="server-launcher-check">${icon('refresh')}${t('Check for updates')}</button>${launcher.phase === 'downloaded' ? lh`<button class="gold-button" data-action="server-launcher-install">${t('Restart to install')}</button>` : ''}</div></section>
+  <div class="danger-zone"><strong>${t('Danger zone')}</strong><span>${t('Deleting cannot be undone.')}</span><button class="secondary-button danger-button" data-action="coa-delete-server-ask" ${busy ? 'disabled' : ''}>${t('Delete server')}</button></div>`;
+}
+function serverBackups() {
+  const list = state.serverBackups;
+  if (!list) return lh`<p class="page-description">${t('Loading…')}</p>`;
+  const rows = list.length ? list.map(b => lh`<div class="backup-row"><span><strong>${escape(b.when)}</strong><small>${escape(t(backupReasons[b.reason] || b.reason))} · ${escape(formatSize(b.size))} · ${escape(b.name)}</small></span><button class="secondary-button" data-action="coa-restore-ask" data-name="${escape(b.name)}" ${state.serverInfo?.running ? 'disabled' : ''}>${t('Restore')}</button></div>`).join('') : lh`<div class="backup-empty">${t('No backups yet.')}</div>`;
+  return lh`<p class="page-description">${t('Characters, accounts and guilds, saved inside the server folder (Backups\\launcher). Restoring stops the server, saves the current state first, then replaces everything with the backup.')}</p><div class="button-row"><button class="gold-button" data-action="server-backup-now" ${state.coaBusy ? 'disabled' : ''}>${t('Back up now')}</button><button class="secondary-button" data-action="coa-backup-folder">${icon('folder')}${t('Open backups folder')}</button></div><div class="backup-list">${rows}</div>${state.coaBusy ? lh`<div id="coa-status" class="coa-status" role="status">${escape(state.coaStatus || '')}</div>` : ''}`;
+}
+function worldRow(o) {
+  const control = o.type === 'bool' ? lh`<input class="switch" type="checkbox" data-world="${escape(o.key)}" data-type="bool" ${o.value ? 'checked' : ''}>` : lh`<input type="number" class="bot-number" data-world="${escape(o.key)}" data-type="${o.type}" step="${o.type === 'int' ? 1 : 0.1}" ${o.min !== null ? `min="${o.min}"` : ''} ${o.max !== null ? `max="${o.max}"` : ''} value="${escape(o.value)}">`;
+  const shown = v => o.type === 'bool' ? (v ? t('On') : t('Off')) : String(v);
+  return lh`<div class="bot-opt schema-opt"><div><strong>${escape(tm(o.title))}</strong><small>${escape(o.description)}</small><small class="bot-default">${t('Default')}: ${escape(shown(o.default))} · <code>${escape(o.key)}</code></small></div><div class="schema-control">${control}<button class="schema-reset" data-action="world-default" data-key="${escape(o.key)}" ${o.value === o.default ? 'disabled' : ''}>${t('Reset to default')}</button></div></div>`;
+}
+function serverWorld() {
+  const w = state.serverWorld;
+  if (w === undefined) return lh`<p class="page-description">${t('Loading…')}</p>`;
+  if (!w) return lh`<div class="addon-empty"><strong>${t('World settings are not available')}</strong><span>${escape(tm(state.serverWorldError || ''))}</span></div>`;
+  const q = (state.serverWorldQuery || '').toLowerCase();
+  const groups = Object.keys(w.groups).map(g => {
+    const items = w.options.filter(o => o.group === g && (!q || `${o.key} ${o.title} ${o.description}`.toLowerCase().includes(q)));
+    return items.length ? lh`<h3 class="bot-heading">${escape(tm(w.groups[g]))}</h3><div class="bot-opts">${items.map(worldRow).join('')}</div>` : '';
+  }).join('');
+  return lh`<p class="page-description">${t('The popular rates and options of the world server. They are saved to the server\'s settings template and apply after the server restarts. A server update may restore the original values.')}</p><label class="search-box">${icon('search')}<input id="world-search" type="text" placeholder="${t('Search settings')}" value="${escape(state.serverWorldQuery || '')}"></label><div id="world-results">${groups || lh`<p class="page-description">${t('No settings match your search.')}</p>`}</div>`;
+}
+function serverPage() {
+  const tab = state.serverTab || 'overview';
+  if (!state.settings.serverPath) return lh`<div class="content-page">${titleBlock(t('Server'), t('Your own CoA server: where it lives, how it runs, and its settings.'), t('YOUR SERVER'))}<div class="empty-panel"><span class="empty-emblem">${icon('database')}</span><h2>${t('No server yet')}</h2><p>${t('Create a server on this PC, or point the launcher at one you already have.')}</p><div class="button-row"><button class="gold-button" data-action="coa-create">${icon('download')}${t('Create server')}</button><button class="secondary-button" data-action="coa-locate">${icon('folder')}${t('Locate')}</button></div></div></div>`;
+  return lh`<div class="content-page server-page">${titleBlock(t('Server'), t('Your own CoA server: where it lives, how it runs, and its settings.'), t('YOUR SERVER'))}${serverTabs()}<div id="server-body">${tab === 'backups' ? serverBackups() : tab === 'world' ? serverWorld() : serverOverview()}</div></div>`;
+}
+async function loadServer(tab = state.serverTab || 'overview') {
+  if (!state.settings.serverPath) return;
+  try {
+    if (tab === 'overview') state.serverInfo = await api.serverInfo();
+    else if (tab === 'backups') { state.serverInfo = await api.serverInfo(); state.serverBackups = await api.coaBackups(); }
+    else { state.serverWorldError = ''; try { state.serverWorld = await api.serverWorldOptions(); } catch (error) { state.serverWorld = null; state.serverWorldError = error.message; } }
+  } catch (error) { state.serverFailed = tab; toast(tm(error.message)); }
+  if (state.page === 'server') render();
+}
 function updatesPage() {
   const u = state.coaUpdates;
   const row = key => {
@@ -809,6 +878,7 @@ function render() {
   if (state.page === 'home') main.innerHTML = homePage();
   else if (state.page === 'news') main.innerHTML = newsPage();
   else if (state.page === 'updates') main.innerHTML = updatesPage();
+  else if (state.page === 'server') main.innerHTML = serverPage();
   else if (state.page === 'races') main.innerHTML = racesPage();
   else if (state.page === 'bots') main.innerHTML = botsPage();
   else if (state.page === 'bugtracker') main.innerHTML = bugtrackerPage();
@@ -822,6 +892,7 @@ function render() {
   if (state.page === 'bugtracker') loadIssues();
   if (state.page === 'addons') loadAddons();
   if (state.page === 'updates' && !state.coaUpdates) loadUpdates();
+  if (state.page === 'server' && !state.serverLoading && state.serverFailed !== (state.serverTab || 'overview') && state.settings.serverPath && (state.serverTab === 'backups' ? !state.serverBackups : state.serverTab === 'world' ? state.serverWorld === undefined : !state.serverInfo)) { state.serverLoading = true; loadServer().finally(() => { state.serverLoading = false; if (state.page === 'server') render(); }); }
   if (state.page === 'races') loadRaces();
   if (state.page === 'bots' && !state.coaBotRaces && state.settings.serverPath) loadBotRaces();
   if (isEmbeddedPage()) { updateDatabaseStatus(); requestAnimationFrame(syncDatabaseView); }
@@ -1119,6 +1190,13 @@ async function chooseClient() {
   if (!client.installed) showInstall(); else toast(t('Client selected. Files will be checked before playing.'));
 }
 document.addEventListener('change', async event => {
+  const world = event.target.closest?.('[data-world]');
+  if (world) {
+    const item = state.serverWorld?.options.find(o => o.key === world.dataset.world); if (!item) return;
+    try { state.serverWorld = await api.serverSetWorldOption(item.key, world.dataset.type === 'bool' ? (world.checked ? 1 : 0) : Number(world.value)); toast(t('Saved. Restart the server to apply.')); const reset = main.querySelector('[data-action="world-default"][data-key="' + item.key + '"]'); const now = state.serverWorld.options.find(o => o.key === item.key); if (reset && now) reset.disabled = now.value === now.default; }
+    catch (error) { toast(tm(error.message)); world.value = item.value; if (world.type === 'checkbox') world.checked = !!item.value; }
+    return;
+  }
   const input = event.target.closest?.('[data-bot-opt]'); if (!input) return;
   const value = input.dataset.kind === 'switch' ? (input.checked ? '1' : '0') : input.value;
   try { await api.coaSetBotOption(input.dataset.botOpt, value); toast(t('Saved. Restart the server to apply.')); if (state.botOpts) { const o = state.botOpts.find(x => x.key === input.dataset.botOpt); if (o) o.value = value; } }
@@ -1140,6 +1218,7 @@ document.addEventListener('change', async event => {
   try { state.ahBot = await api.coaSetAhBot(ah.dataset.ah, ah.type === 'checkbox' ? ah.checked : ah.value); toast(t('Saved. Restart the server to apply.')); } catch (error) { toast(tm(error.message)); render(); }
 });
 document.addEventListener('input', event => {
+  if (event.target.id === 'world-search') { state.serverWorldQuery = event.target.value; const at = event.target.selectionStart; render(); const box = document.getElementById('world-search'); box?.focus(); box?.setSelectionRange(at, at); return; }
   const slider = event.target.closest?.('[data-bot-schema]');
   if (slider && slider.type === 'range') { const number = [...main.querySelectorAll('input[type="number"]')].find(n => n.dataset.botSchema === slider.dataset.botSchema); if (number) number.value = slider.value; return; }
   if (event.target.id === 'bot-schema-search') { state.botSchemaQuery = event.target.value; const at = event.target.selectionStart; render(); const box = document.getElementById('bot-schema-search'); box?.focus(); box?.setSelectionRange(at, at); return; }
@@ -1279,6 +1358,49 @@ const actions = {
   'coa-link': element => api.coaOpen(element.dataset.link),
   'coa-modules': showModules,
   'coa-realm': showRealm,
+  'server-tab': element => { state.serverFailed = ''; state.serverTab = element.dataset.tab; if (state.serverTab === 'world') state.serverWorld = undefined; if (state.serverTab === 'backups') state.serverBackups = null; render(); },
+  'server-size': async () => { state.serverSize = { bytes: 0 }; state.serverSize = await api.serverSize(); render(); },
+  'server-old-size': async () => { state.serverOldSize = await api.serverOldSize(); render(); },
+  'server-open-folder': () => api.serverOpenFolder(),
+  'server-forget-ask': () => openModal(lh`${modalHeader(t('Forget this server?'), state.settings.serverPath)}<div class="modal-body"><p>${t('The launcher stops using this folder. No file is deleted, and you can select the folder again with Locate.')}</p></div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button" data-action="server-forget-go">${t('Forget this server')}</button></div>`, 'backup-dialog'),
+  'server-forget-go': async () => { closeModal(); await api.serverForget(); state.settings = await api.bootstrap().then(data => data.settings); state.serverInfo = null; state.coaUpdates = null; render(); toast(t('The server was forgotten. Its files are untouched.')); },
+  'server-move': async () => {
+    const pick = await api.serverMovePick(); if (!pick) return;
+    const warn = pick.warnings.map(w => lh`<p class="addon-warning">${escape(tm(w))}</p>`).join('');
+    if (pick.problems.length) { openModal(lh`${modalHeader(t('That folder cannot be used'), pick.dest)}<div class="modal-body">${pick.problems.map(p => lh`<p class="addon-warning">${escape(tm(p))}</p>`).join('')}</div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Close')}</button><button class="gold-button" data-action="server-move">${t('Choose another folder')}</button></div>`, 'backup-dialog'); return; }
+    state.moveDest = pick.dest;
+    openModal(lh`${modalHeader(t('Move the server here?'), pick.dest)}<div class="modal-body"><p>${lt`The launcher will stop the server, back up your characters, copy ${formatSize(pick.bytes)} to the new folder, check the copy, and then switch to it. The copy can take a long time; a progress bar shows the estimate.`}</p><p>${t('Your old folder is not changed or deleted. You can delete it later when you are sure everything works.')}</p>${warn}</div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button" data-action="server-move-go">${t('Move the server')}</button></div>`, 'backup-dialog');
+  },
+  'server-move-go': async () => {
+    closeModal();
+    await coaRun(t('Moving the server…'), async () => {
+      const done = await api.serverMove(state.moveDest);
+      state.settings = await api.bootstrap().then(data => data.settings); state.serverInfo = null; state.serverSize = null; state.serverOldSize = null; state.coaUpdates = null;
+      state.coaStatus = lt`The server is now in ${done.path}. ${done.characters} characters and ${done.accounts} accounts checked.`;
+    });
+  },
+  'server-delete-old-ask': async () => {
+    try { state.serverOldSize = await api.serverOldSize(); } catch (error) { toast(tm(error.message)); return; }
+    openModal(lh`${modalHeader(t('Delete the old copy?'), state.serverInfo?.oldPath || '')}<div class="modal-body"><p>${lt`This permanently deletes the old server folder (${formatSize(state.serverOldSize.bytes)}), including the characters and backups stored in it. Your active server is in ${state.settings.serverPath} and is not affected. This cannot be undone.`}</p></div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button danger-button" data-action="server-delete-old-go">${t('Delete old copy')}</button></div>`, 'backup-dialog');
+  },
+  'server-delete-old-go': async () => { closeModal(); await coaRun(t('Deleting the old copy…'), async () => { await api.serverDeleteOld(); state.settings = await api.bootstrap().then(data => data.settings); state.serverInfo = null; state.serverOldSize = null; state.coaStatus = t('The old copy was deleted.'); }); },
+  'server-forget-old': async () => { await api.serverForgetOld(); state.settings = await api.bootstrap().then(data => data.settings); state.serverInfo = null; render(); },
+  'server-ports': () => {
+    const p = state.serverInfo.ports;
+    openModal(lh`${modalHeader(t('Server ports'), t('The server must be stopped. The login port stays as it is, because the game connects to it.'))}<div class="modal-body"><label class="form-label" for="port-world">${t('World port')}</label><input type="number" id="port-world" min="1024" max="65535" value="${p.world}"><label class="form-label" for="port-mysql">MySQL</label><input type="number" id="port-mysql" min="1024" max="65535" value="${p.mysql}"><label class="form-label" for="port-ra">RA</label><input type="number" id="port-ra" min="1024" max="65535" value="${p.ra}"><div class="info-box">${icon('info')}<span>${t('Each port must be different and not used by another program.')}</span></div></div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button" data-action="server-ports-save">${t('Save')}</button></div>`, 'backup-dialog');
+  },
+  'server-ports-save': async () => {
+    try { await api.serverSetPorts({ worldPort: Number(document.getElementById('port-world').value), mysqlPort: Number(document.getElementById('port-mysql').value), raPort: Number(document.getElementById('port-ra').value) }); closeModal(); state.serverInfo = null; render(); toast(t('Ports saved. They apply when the server starts.')); }
+    catch (error) { toast(tm(error.message)); }
+  },
+  'server-restart': () => coaRun(t('Restarting the server…'), async () => { await api.coaStopServer(); await api.coaStartServer(); state.coaStatus = t('Server is running.'); state.serverInfo = null; render(); }),
+  'server-backup-now': () => coaRun(t('Backing up… do not close the launcher.'), async () => { const made = await api.coaBackup(); state.coaStatus = lt`Saved ${made.name} (${formatSize(made.size)}).`; state.serverBackups = await api.coaBackups(); }),
+  'server-launcher-check': async () => { state.launcherUpdate = await api.checkLauncher(); render(); },
+  'server-launcher-install': () => api.installLauncherUpdate(),
+  'world-default': async element => {
+    const item = state.serverWorld?.options.find(o => o.key === element.dataset.key); if (!item) return;
+    try { state.serverWorld = await api.serverSetWorldOption(item.key, item.default); toast(t('Saved. Restart the server to apply.')); render(); } catch (error) { toast(tm(error.message)); }
+  },
   'coa-create': () => coaRun(t('Creating your server…'), async () => {
     const created = await api.coaCreateServer();
     if (!created) { state.coaStatus = ''; render(); return; }
@@ -1330,7 +1452,7 @@ api.onCommunityProgress?.(status => {
 api.onCoaProgress?.(status => {
   if (!status) return;
   const pct = status.total ? ` ${Math.floor(status.done / status.total * 100)}% (${(status.done / 2 ** 30).toFixed(2)} / ${(status.total / 2 ** 30).toFixed(2)} GB)` : '';
-  state.coaStatus = `${status.message || ''}${pct}`;
+  state.coaStatus = `${status.message || ''}${pct}${status.eta ? ' · ' + communityEta(status.eta) : ''}`;
   state.coaPct = status.total ? Math.floor(status.done / status.total * 100) : state.coaPct;
   const fill = document.getElementById('coa-bar-fill'); if (fill) { fill.style.width = `${state.coaPct || 0}%`; fill.parentElement.className = `coa-bar on${state.coaPct ? '' : ' wait'}`; }
   const line = document.getElementById('coa-status');

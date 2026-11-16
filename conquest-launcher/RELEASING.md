@@ -23,3 +23,7 @@ In the source project, follow `../BUILD_AND_RELEASE.md` for building and prepari
 Increment package.json/package-lock.json version before a changed release. `npm.cmd run build` creates NSIS artifacts and `dist/launcher-release`; it does not compile the backend. Publish current Linux backend output as described in the build guide before `npm.cmd run package:vps`, which collects a new validated deployment archive. Use the newly generated archive, not a historical bundle. Players receive only the installer EXE. The host receives the archive plus the complete production game client for first installation; private settings are exchanged separately.
 
 On the VPS, use section 12 of `PRODUCTION_DEPLOYMENT.md` to select launcher-only, game-only, backend/tools or combined updates. Packaging alone does not publish anything. The host publishes the full launcher release folder for self-updates, and validates/publishes the private master with a unique client release name for game updates. Players click UPDATE before game downloads begin and choose Restart & Update for launcher installation.
+
+## Launcher self-update (GitHub)
+
+See `../docs/RELEASING-THE-LAUNCHER.md`: every launcher release needs the installer, its `.blockmap` and `latest.yml` (`dist/github-release` after `npm run build`), published with `gh release create vX.Y.Z ... --latest`.

@@ -20,6 +20,7 @@ const { GameCredentials } = require('./game-credentials.cjs');
 const { requireGameClosed, isGameRunning, configureRealm } = require('./game-safety.cjs');
 const { createLauncherUpdates } = require('./launcher-updates.cjs');
 const { CoaCustom, networkAddresses, hostnameOk } = require('./coa-custom.cjs');
+const { ServerTools } = require('./server-tools.cjs');
 const { SquidDashboard } = require('./squid-dashboard.cjs');
 const { CommunityAddons } = require('./community-addons.cjs');
 const localTesting = !app.isPackaged && process.env.COA_LOCAL_TEST === '1';
@@ -68,6 +69,7 @@ let settings = null;
 let settingsFile = '';
 let game = null;
 const embeddedViews = new Map();
+let serverStartedAt = 0; // when this launcher last started the server (uptime on the Server page)
 let dashboardTarget = ''; // http://127.0.0.1:<port>/ of the running SquidBots dashboard
 function localDashboardUrl(value) {
   const url = new URL(value);
@@ -662,12 +664,19 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
   };
   const realmAddress = () => settings.realmMode === 'local' ? '127.0.0.1' : settings.realmlist;
   const dashboard = new SquidDashboard({ coa });
+  const serverTools = new ServerTools({ coa, notify: status => sendStatus('coa:progress', status) });
   app.on('before-quit', () => dashboard.stopSync());
   const dashboardInfo = async () => ({ ...(await dashboard.info(await requireServer())), newest: await dashboard.newestTag() });
   handle('coa:network', () => networkAddresses());
   handle('coa:create-server', async () => {
     const result = await dialog.showOpenDialog(window, { title: nativeText('Choose an EMPTY folder for your server (about 15 GB)'), properties: ['openDirectory', 'createDirectory'] });
     if (result.canceled || !result.filePaths[0]) return null;
+    const check = await serverTools.checkFolder(result.filePaths[0]);
+    if (check.problems.length) throw new Error(check.problems.join(' '));
+    if (check.warnings.length) {
+      const answer = await dialog.showMessageBox(window, { type: 'warning', buttons: [nativeText('Use this folder'), nativeText('Cancel')], defaultId: 1, cancelId: 1, message: nativeText('Are you sure about this folder?'), detail: check.warnings.join('\n') });
+      if (answer.response !== 0) return null;
+    }
     const created = await coa.createServer(result.filePaths[0]);
     await persist({ ...settings, serverPath: created.path, localMode: true, versions: { ...settings.versions, server: created.version } });
     return created;
@@ -682,10 +691,11 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
   handle('coa:start-server', async () => {
     const root = await requireServer();
     await coa.startServer(root, realmAddress());
+    serverStartedAt = Date.now();
     // The dashboard runs only while the server runs; a failure here must not fail the server start.
     if (await dashboard.installedVersion(root)) dashboard.start(root).then(url => { dashboardTarget = url; }, () => {});
   });
-  handle('coa:stop-server', async () => { const root = await requireServer(); await dashboard.stop(); dashboardTarget = ''; return coa.stopServer(root); });
+  handle('coa:stop-server', async () => { const root = await requireServer(); await dashboard.stop(); dashboardTarget = ''; serverStartedAt = 0; return coa.stopServer(root); });
   handle('coa:apply-modules', async choice => {
     if (!choice || typeof choice !== 'object') throw new Error('Invalid module choice.');
     const modules = { squid: choice.squid === true, devMenu: choice.devMenu === true, races: choice.races === true };
@@ -731,6 +741,39 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
   // ---- accounts and deleting ----
   handle('coa:accounts', async () => coa.listAccounts(await requireServer()));
   handle('coa:create-account', async data => coa.createAccount(await requireServer(), { username: data?.username, password: data?.password, gm: data?.gm === true }));
+  // ---- Server page: where the server lives, its state, world settings ----
+  const stoppedOrThrow = async (root, what) => { const s = await serverTools.status(root); if (!s || s.mysql || s.auth || s.world) throw new Error(`Stop the server before ${what}.`); };
+  handle('server:info', async () => {
+    const root = await requireServer();
+    const info = await serverTools.info(root, { versionHint: settings.versions?.server || '', startedAt: serverStartedAt });
+    const old = settings.oldServerPath;
+    return { ...info, oldPath: old && !(await fs.stat(path.join(old, 'Scripts/manage.py')).catch(() => null)) ? '' : old || '' };
+  });
+  handle('server:size', async () => serverTools.folderSize(await requireServer()));
+  handle('server:old-size', async () => { if (!settings.oldServerPath) throw new Error('There is no old copy.'); return serverTools.folderSize(settings.oldServerPath); });
+  handle('server:open-folder', async () => { const result = await shell.openPath(await requireServer()); if (result) throw new Error(result); });
+  handle('server:forget', async () => { const root = await requireServer(); await stoppedOrThrow(root, 'forgetting it'); await persist({ ...settings, serverPath: '', versions: { ...settings.versions, server: '' } }); return true; });
+  // Step 1 of a move: pick the folder and check it; nothing is changed yet.
+  handle('server:move-pick', async () => {
+    const root = await requireServer();
+    const picked = await dialog.showOpenDialog(window, { title: nativeText('Choose an EMPTY folder for the server (another drive is fine)'), properties: ['openDirectory', 'createDirectory'] });
+    if (picked.canceled || !picked.filePaths[0]) return null;
+    const scan = await serverTools.scan(root, { skip: rel => rel === '.state' });
+    const check = await serverTools.checkFolder(picked.filePaths[0], { source: root, bytes: scan.bytes, longest: scan.longest });
+    return { dest: path.resolve(picked.filePaths[0]), bytes: scan.bytes, ...check };
+  });
+  // Step 2: copy, check, switch. The old folder stays until "Delete old copy".
+  handle('server:move', async dest => {
+    const root = await requireServer();
+    const moved = await serverTools.move(root, String(dest || ''), { beforeStop: async () => { await dashboard.stop(); dashboardTarget = ''; serverStartedAt = 0; } });
+    await persist({ ...settings, serverPath: moved.path, oldServerPath: root });
+    return moved;
+  });
+  handle('server:delete-old', async () => { await serverTools.deleteOld(settings.oldServerPath, await requireServer()); await persist({ ...settings, oldServerPath: '' }); return true; });
+  handle('server:forget-old', async () => { await persist({ ...settings, oldServerPath: '' }); return true; });
+  handle('server:set-ports', async values => serverTools.setPorts(await requireServer(), values && typeof values === 'object' ? values : {}));
+  handle('server:world-options', async () => serverTools.worldOptions(await requireServer()));
+  handle('server:set-world-option', async (key, value) => serverTools.setWorldOption(await requireServer(), String(key), value));
   handle('coa:delete-server', async () => {
     const root = await requireServer();
     await coa.deleteServer(root);

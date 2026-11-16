@@ -319,3 +319,10 @@ body.auth-locked .main-nav, body.auth-locked .utilitybar, body.auth-locked #main
 .community-card .addon-warning{margin:4px 0;padding:6px 8px;border-left:3px solid #d9a441;background:rgba(217,164,65,.1);font-size:12px}
 .community-card .addon-meta{margin:2px 0;font-size:12px;opacity:.8}
 .community-card .button-row{margin-top:8px}
+
+.server-card{margin:14px 0;padding:14px 16px;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(0,0,0,.2)}
+.server-row{display:flex;gap:12px;padding:5px 0;align-items:baseline}
+.server-label{width:110px;flex:none;opacity:.7}
+.server-value,.server-path{min-width:0;overflow-wrap:anywhere}
+.server-path{font-family:Consolas,monospace;font-size:13px}
+.server-old{align-items:center;flex-wrap:wrap;gap:10px}

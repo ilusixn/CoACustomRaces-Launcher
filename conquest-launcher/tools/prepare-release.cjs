@@ -12,6 +12,10 @@ async function prepare() {
   if (!latest.includes(`version: ${version}`) || !latest.includes(file) || !latest.includes(await sha512(path.join(bundle, file)))) throw new Error('electron-builder updater metadata does not match the installer.');
   await fs.writeFile(path.join(bundle, 'latest.yml'), latest);
   await fs.writeFile(path.join(bundle, 'launcher-release.json'), JSON.stringify({ version, file, size: (await fs.stat(path.join(bundle, file))).size, sha512: await sha512(path.join(bundle, file)), blockmapSha512: await sha512(path.join(bundle, file + '.blockmap')) }, null, 2));
+  // Exactly what a GitHub release needs for self-update: the installer, its blockmap and latest.yml (without latest.yml nobody is updated).
+  const github = path.join(dist, 'github-release');
+  await fs.rm(github, { recursive: true, force: true }); await fs.mkdir(github, { recursive: true });
+  for (const name of [file, file + '.blockmap', 'latest.yml']) await fs.copyFile(path.join(bundle, name), path.join(github, name));
   const operations = path.join(dist, 'release-tools');
   await fs.mkdir(path.join(operations, 'tools'), { recursive: true }); await fs.mkdir(path.join(operations, 'src'), { recursive: true });
   for (const name of ['publish-client.cjs', 'publish-launcher.cjs', 'release-manager.cjs', 'validate-master.cjs']) await fs.copyFile(path.join(root, 'tools', name), path.join(operations, 'tools', name));

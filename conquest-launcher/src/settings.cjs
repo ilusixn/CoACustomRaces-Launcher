@@ -4,7 +4,7 @@ const path = require('node:path');
 
 const defaults = Object.freeze({ language: 'en', languageSelected: false, startPage: 'home', launchBehavior: 'keep-open', launchBehaviorMigrated: true, autoLaunchAfterUpdate: true, autoUpdate: true, addonCleanupDismissed: false, rememberClient: true, hdPatches: true, wineCompatibility: false, autoLoginGame: false, downloadLimitMBps: 0, graphicsCompatibility: false, disableGraphicsEnhancements: false, reducedMotion: false, sound: true, installPath: '',
   // CoA Custom Races additions
-  localMode: true, serverPath: '', realmMode: 'local', realmlist: '127.0.0.1', modules: { squid: false, devMenu: false, races: true }, customOwned: [], versions: { server: '', squid: '', devMenu: '', races: '' } });
+  localMode: true, serverPath: '', oldServerPath: '', realmMode: 'local', realmlist: '127.0.0.1', modules: { squid: false, devMenu: false, races: true }, customOwned: [], versions: { server: '', squid: '', devMenu: '', races: '' } });
 function sanitize(value) {
   const result = { ...defaults, modules: { ...defaults.modules }, versions: { ...defaults.versions } };
   if (!value || typeof value !== 'object') return result;
@@ -24,6 +24,7 @@ function sanitize(value) {
   if (typeof value.installPath === 'string' && path.isAbsolute(value.installPath)) result.installPath = path.normalize(value.installPath);
   result.localMode = true; result.autoLoginGame = false; // no account service in this edition
   if (typeof value.serverPath === 'string' && (!value.serverPath || path.isAbsolute(value.serverPath))) result.serverPath = value.serverPath && path.normalize(value.serverPath);
+  if (typeof value.oldServerPath === 'string' && (!value.oldServerPath || path.isAbsolute(value.oldServerPath))) result.oldServerPath = value.oldServerPath && path.normalize(value.oldServerPath);
   if (['local', 'lan', 'hamachi', 'custom'].includes(value.realmMode)) result.realmMode = value.realmMode;
   if (typeof value.realmlist === 'string' && /^[a-zA-Z0-9.-]{1,253}$/.test(value.realmlist)) result.realmlist = value.realmlist;
   if (value.modules && typeof value.modules === 'object') result.modules = { squid: value.modules.squid === true, devMenu: value.modules.devMenu === true, races: value.modules.races === true };
