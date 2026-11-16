@@ -57,7 +57,8 @@ function httpsUrl(value) {
   if (url.protocol !== 'https:' || url.hostname !== 'github.com') throw new Error('Community addons: links must be https://github.com/ ones.');
   return url.href;
 }
-function loadCatalog(file = path.join(__dirname, 'community-addons.json')) { return validateCatalog(JSON.parse(fss.readFileSync(file, 'utf8'))); }
+// The default is a literal require so the production bundle inlines the data file.
+function loadCatalog(file) { return validateCatalog(file ? JSON.parse(fss.readFileSync(file, 'utf8')) : JSON.parse(JSON.stringify(require('./community-addons.json')))); }
 
 // ---------- zip central directory (checked before anything is extracted) ----------
 
