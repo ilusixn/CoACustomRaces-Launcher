@@ -48,7 +48,7 @@ Useful manager options:
 | --- | --- |
 | 2 | Build the Windows installer at the current version |
 | 3 | Create a hotfix package from an existing launcher build |
-| 4 | Build the Linux x64 backend |
+| 4 | Build the Linux backend |
 | U | Build and package a backend update for an existing installation |
 | 7 | Install locked npm dependencies |
 | 8 | Check prerequisites |
@@ -90,7 +90,7 @@ Some tests generate local production bundles. Manual smoke scripts may require c
 
 ## Deploy
 
-- [Production deployment](PRODUCTION_DEPLOYMENT.md): new Ubuntu 26.04 x64 host with existing Nginx and MySQL/MariaDB.
+- [Production deployment](PRODUCTION_DEPLOYMENT.md): new Ubuntu 26.04 host with existing Nginx and MySQL/MariaDB.
 - [Launcher updates](conquest-launcher/LAUNCHER_DEPLOYMENT.md): publish an installer and its update feed.
 - [Existing backend updates](UPDATE_0.8.1.md): update the original installation while preserving its configuration and authentication routing.
 - [Security](SECURITY.md): private configuration and reporting vulnerabilities.
