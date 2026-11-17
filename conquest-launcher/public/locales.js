@@ -1170,7 +1170,9 @@ launcherI18n.register("fr", "Français", {
   "Add my client and patch": "Ajouter mon client et le patch",
   "Choose your CoA client. The Custom Races patch installs next…": "Choisissez votre client CoA. Le patch Custom Races s’installe ensuite…",
   "Custom Races {0} installed on your client.": "Custom Races {0} installé sur votre client.",
-  "Have a CoA client? <span>Add it and install the patch</span>": "Vous avez un client CoA ? <span>Ajoutez-le et installez le patch</span>"
+  "Have a CoA client? <span>Add it and install the patch</span>": "Vous avez un client CoA ? <span>Ajoutez-le et installez le patch</span>",
+  "Play starts the CoA client already on this PC when no full client has been published.": "Jouer démarre le client CoA déjà présent sur ce PC lorsqu’aucun client complet n’a été publié.",
+  "No published client release. Playing the client already on this PC.": "Aucune version complète du client n’est publiée. Lancement du client déjà présent sur ce PC."
 }, true);
 launcherI18n.register("es-ES", "Español", {
   "Clear cache before launching": "Borrar caché antes de iniciar",
@@ -2343,7 +2345,9 @@ launcherI18n.register("es-ES", "Español", {
   "Add my client and patch": "Añadir mi cliente y el parche",
   "Choose your CoA client. The Custom Races patch installs next…": "Elige tu cliente de CoA. Después se instala el parche Custom Races…",
   "Custom Races {0} installed on your client.": "Custom Races {0} instalado en tu cliente.",
-  "Have a CoA client? <span>Add it and install the patch</span>": "¿Tienes un cliente de CoA? <span>Añádelo e instala el parche</span>"
+  "Have a CoA client? <span>Add it and install the patch</span>": "¿Tienes un cliente de CoA? <span>Añádelo e instala el parche</span>",
+  "Play starts the CoA client already on this PC when no full client has been published.": "Jugar inicia el cliente de CoA que ya está en este PC cuando no se ha publicado un cliente completo.",
+  "No published client release. Playing the client already on this PC.": "No hay una versión completa del cliente publicada. Se inicia el cliente que ya está en este PC."
 }, true);
 launcherI18n.register("ru", "Русский", {
   "Clear cache before launching": "Очищать кэш перед запуском",
@@ -3516,7 +3520,9 @@ launcherI18n.register("ru", "Русский", {
   "Add my client and patch": "Добавить мой клиент и патч",
   "Choose your CoA client. The Custom Races patch installs next…": "Выберите клиент CoA. Затем установится патч Custom Races…",
   "Custom Races {0} installed on your client.": "Custom Races {0} установлен в ваш клиент.",
-  "Have a CoA client? <span>Add it and install the patch</span>": "Уже есть клиент CoA? <span>Добавьте его и установите патч</span>"
+  "Have a CoA client? <span>Add it and install the patch</span>": "Уже есть клиент CoA? <span>Добавьте его и установите патч</span>",
+  "Play starts the CoA client already on this PC when no full client has been published.": "Кнопка «Играть» запускает клиент CoA, уже установленный на этом компьютере, если полная версия клиента не опубликована.",
+  "No published client release. Playing the client already on this PC.": "Полная версия клиента не опубликована. Запускается клиент, уже установленный на этом компьютере."
 }, true);
 launcherI18n.register("zh-CN", "简体中文", {
   "Clear cache before launching": "启动前清除缓存",
@@ -4689,5 +4695,7 @@ launcherI18n.register("zh-CN", "简体中文", {
   "Add my client and patch": "添加我的客户端并安装补丁",
   "Choose your CoA client. The Custom Races patch installs next…": "选择你的 CoA 客户端。随后会安装 Custom Races 补丁…",
   "Custom Races {0} installed on your client.": "Custom Races {0} 已安装到你的客户端。",
-  "Have a CoA client? <span>Add it and install the patch</span>": "已有 CoA 客户端？<span>添加并安装补丁</span>"
+  "Have a CoA client? <span>Add it and install the patch</span>": "已有 CoA 客户端？<span>添加并安装补丁</span>",
+  "Play starts the CoA client already on this PC when no full client has been published.": "没有已发布的完整客户端时，点击“开始游戏”会启动本机已有的 CoA 客户端。",
+  "No published client release. Playing the client already on this PC.": "没有已发布的完整客户端。正在启动本机已有的客户端。"
 }, true);

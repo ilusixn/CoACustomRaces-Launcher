@@ -1169,5 +1169,7 @@
   "Add my client and patch": "Добавить мой клиент и патч",
   "Choose your CoA client. The Custom Races patch installs next…": "Выберите клиент CoA. Затем установится патч Custom Races…",
   "Custom Races {0} installed on your client.": "Custom Races {0} установлен в ваш клиент.",
-  "Have a CoA client? <span>Add it and install the patch</span>": "Уже есть клиент CoA? <span>Добавьте его и установите патч</span>"
+  "Have a CoA client? <span>Add it and install the patch</span>": "Уже есть клиент CoA? <span>Добавьте его и установите патч</span>",
+  "Play starts the CoA client already on this PC when no full client has been published.": "Кнопка «Играть» запускает клиент CoA, уже установленный на этом компьютере, если полная версия клиента не опубликована.",
+  "No published client release. Playing the client already on this PC.": "Полная версия клиента не опубликована. Запускается клиент, уже установленный на этом компьютере."
 }

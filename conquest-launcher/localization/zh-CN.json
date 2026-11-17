@@ -1169,5 +1169,7 @@
   "Add my client and patch": "添加我的客户端并安装补丁",
   "Choose your CoA client. The Custom Races patch installs next…": "选择你的 CoA 客户端。随后会安装 Custom Races 补丁…",
   "Custom Races {0} installed on your client.": "Custom Races {0} 已安装到你的客户端。",
-  "Have a CoA client? <span>Add it and install the patch</span>": "已有 CoA 客户端？<span>添加并安装补丁</span>"
+  "Have a CoA client? <span>Add it and install the patch</span>": "已有 CoA 客户端？<span>添加并安装补丁</span>",
+  "Play starts the CoA client already on this PC when no full client has been published.": "没有已发布的完整客户端时，点击“开始游戏”会启动本机已有的 CoA 客户端。",
+  "No published client release. Playing the client already on this PC.": "没有已发布的完整客户端。正在启动本机已有的客户端。"
 }

@@ -56,6 +56,7 @@ class ClientUpdater {
     if (!response.ok) {
       const error = new Error(response.status === 426 ? 'Update your launcher to the latest version to download, install or repair the client.' : response.status === 404 ? 'No client release has been published yet.' : `Could not check client updates (HTTP ${response.status}).`);
       error.serviceUnavailable = response.status === 429 || response.status >= 500;
+      error.noRelease = response.status === 404;
       throw error;
     }
     const chunks = []; let bytes = 0;
@@ -168,6 +169,11 @@ class ClientUpdater {
       let manifest; let offline = false;
       try { manifest = await this.manifest(signal); }
       catch (error) {
+        // This edition's full client is not published. A 404 must not stop Play on a client the player already has.
+        if (error.noRelease) {
+          this.emit('ready', 'No published client release. Playing the client already on this PC.');
+          return { needsUpdate: false, files: 0, removed: 0, bytes: 0, warnings: [] };
+        }
         if (!allowCached || !root || !error.serviceUnavailable || signal.aborted) throw error;
         manifest = await this.readState(root);
         if (!manifest) throw new Error('The update service is unavailable and no verified client release is saved. Try again when the service is available.');

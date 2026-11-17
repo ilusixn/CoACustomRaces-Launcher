@@ -67,6 +67,13 @@ test('throttled downloads pause twice and resume the same partial with a fresh s
   await assert.rejects(fs.stat(part), { code: 'ENOENT' });
 });
 
+test('a missing published client does not block the client already on disk', async t => {
+  const f = await fixture(t);
+  const result = await f.updater.check(f.client);
+  assert.equal(result.needsUpdate, false);
+  assert.equal(f.updater.status.phase, 'ready');
+});
+
 test('network AbortError caused by Pause is normalized to a resumable pause', async () => {
   const updater = new ClientUpdater('https://launcher.example/client/latest.json');
   await assert.rejects(updater.exclusive(async signal => {

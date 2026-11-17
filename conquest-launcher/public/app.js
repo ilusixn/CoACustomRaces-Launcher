@@ -69,6 +69,9 @@ async function showLegalNotices() {
 }
 
 const changelogEntries = [
+  { version: '1.0.3', items: [
+    'Play starts the CoA client already on this PC when no full client has been published.'
+  ] },
   { version: '1.0.2', items: [
     'Added Tailscale so friends can join your server. A Tailscale address of this PC updates the server even from Join a friend.',
     'Added Add my CoA client and patch: choose a CoA client you already have and the launcher installs the Custom Races patch into it.'

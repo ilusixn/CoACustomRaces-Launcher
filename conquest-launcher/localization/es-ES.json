@@ -1169,5 +1169,7 @@
   "Add my client and patch": "Añadir mi cliente y el parche",
   "Choose your CoA client. The Custom Races patch installs next…": "Elige tu cliente de CoA. Después se instala el parche Custom Races…",
   "Custom Races {0} installed on your client.": "Custom Races {0} instalado en tu cliente.",
-  "Have a CoA client? <span>Add it and install the patch</span>": "¿Tienes un cliente de CoA? <span>Añádelo e instala el parche</span>"
+  "Have a CoA client? <span>Add it and install the patch</span>": "¿Tienes un cliente de CoA? <span>Añádelo e instala el parche</span>",
+  "Play starts the CoA client already on this PC when no full client has been published.": "Jugar inicia el cliente de CoA que ya está en este PC cuando no se ha publicado un cliente completo.",
+  "No published client release. Playing the client already on this PC.": "No hay una versión completa del cliente publicada. Se inicia el cliente que ya está en este PC."
 }
