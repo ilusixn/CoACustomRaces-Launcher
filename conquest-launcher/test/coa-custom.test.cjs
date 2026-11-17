@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const { CoaCustom, hostnameOk, networkAddresses, parseRaces } = require('../src/coa-custom.cjs');
+const { CoaCustom, hostnameOk, networkAddresses, isTailscaleAddress, hostsHere, parseRaces } = require('../src/coa-custom.cjs');
 const { sanitize } = require('../src/settings.cjs');
 
 test('module switches replace an existing key, add a missing one and create the file from .dist', async t => {
@@ -79,14 +79,23 @@ test('realm addresses accept IPs and host names only', () => {
   for (const ok of ['127.0.0.1', '25.12.34.56', 'my-server.example.org']) assert.equal(hostnameOk(ok), true);
   for (const bad of ['', "1.2.3.4'; DROP", 'a b', 'x'.repeat(300), null]) assert.equal(hostnameOk(bad), false);
   const found = networkAddresses();
-  assert.ok(Array.isArray(found.lan) && Array.isArray(found.hamachi));
+  assert.ok(Array.isArray(found.lan) && Array.isArray(found.hamachi) && Array.isArray(found.tailscale));
+  assert.equal(isTailscaleAddress('100.125.86.0'), true);
+  assert.equal(isTailscaleAddress('100.64.0.1'), true);
+  assert.equal(isTailscaleAddress('100.127.255.255'), true);
+  assert.equal(isTailscaleAddress('100.63.255.255'), false);
+  assert.equal(isTailscaleAddress('192.168.1.20'), false);
+  const net = { lan: ['192.168.1.20'], hamachi: ['25.1.2.3'], tailscale: ['100.125.86.0'] };
+  assert.equal(hostsHere('tailscale', '100.125.86.0', net), true);
+  assert.equal(hostsHere('custom', '100.125.86.0', net), true);
+  assert.equal(hostsHere('custom', '100.64.1.2', net), false);
 });
 
 test('new settings are sanitized', () => {
-  const s = sanitize({ localMode: true, realmMode: 'hamachi', realmlist: '25.1.2.3', modules: { squid: true, races: 'yes' }, serverPath: 'relative', customOwned: ['Data/patch-T.MPQ', '../x;rm'] });
+  const s = sanitize({ localMode: true, realmMode: 'tailscale', realmlist: '100.125.86.0', modules: { squid: true, races: 'yes' }, serverPath: 'relative', customOwned: ['Data/patch-T.MPQ', '../x;rm'] });
   assert.equal(s.localMode, true);
-  assert.equal(s.realmMode, 'hamachi');
-  assert.equal(s.realmlist, '25.1.2.3');
+  assert.equal(s.realmMode, 'tailscale');
+  assert.equal(s.realmlist, '100.125.86.0');
   assert.deepEqual(s.modules, { squid: true, devMenu: false, races: false });
   assert.equal(s.serverPath, '');
   assert.deepEqual(s.customOwned, ['Data/patch-T.MPQ']);

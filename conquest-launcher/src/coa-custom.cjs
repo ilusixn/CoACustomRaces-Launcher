@@ -39,17 +39,33 @@ function parseRaces(markdown) {
 
 function hostnameOk(value) { return typeof value === 'string' && /^[a-zA-Z0-9.-]{1,253}$/.test(value); }
 
+// Tailscale CGNAT is 100.64.0.0/10 (100.64.x.x through 100.127.x.x).
+function isTailscaleAddress(address) {
+  const parts = String(address).split('.');
+  if (parts.length !== 4) return false;
+  const n = parts.map(Number);
+  return n.every(x => Number.isInteger(x) && x >= 0 && x <= 255) && n[0] === 100 && n[1] >= 64 && n[1] <= 127;
+}
+
 // Private IPv4 addresses of this PC. Hamachi uses 25.0.0.0/8 on an adapter named "Hamachi".
 function networkAddresses() {
-  const lan = []; const hamachi = [];
+  const lan = []; const hamachi = []; const tailscale = [];
   for (const [name, list] of Object.entries(os.networkInterfaces())) {
     for (const entry of list || []) {
       if (entry.family !== 'IPv4' || entry.internal) continue;
-      if (/hamachi/i.test(name) || entry.address.startsWith('25.')) hamachi.push(entry.address);
+      if (/tailscale/i.test(name) || isTailscaleAddress(entry.address)) tailscale.push(entry.address);
+      else if (/hamachi/i.test(name) || entry.address.startsWith('25.')) hamachi.push(entry.address);
       else if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(entry.address) && !/vethernet|virtualbox|vmware|wsl|docker/i.test(name)) lan.push(entry.address);
     }
   }
-  return { lan, hamachi };
+  return { lan, hamachi, tailscale };
+}
+
+// "Join a friend" is client-only, unless the typed address is one of this PC's own adapters.
+function hostsHere(mode, address, net) {
+  if (mode !== 'custom') return true;
+  const own = new Set([...(net.lan || []), ...(net.hamachi || []), ...(net.tailscale || [])]);
+  return own.has(address);
 }
 
 class CoaCustom {
@@ -264,6 +280,15 @@ class CoaCustom {
     await this.extractZip(zip, '', addons);
     await fsp.rm(zip, { force: true });
     return release.tag_name;
+  }
+
+  // Client half only: MPQs, CoACustomRace.exe and addons on a CoA folder the player already has.
+  async patchClient(clientPath) {
+    return this.exclusive(async () => {
+      const tag = await this.installRaces(clientPath);
+      this.emit('ready', 'Custom Races patch installed.');
+      return tag;
+    });
   }
 
   async installRaces(clientPath) {
@@ -863,4 +888,4 @@ class CoaCustom {
 // shortcut: Saberon id is hard-coded (moved 84->97 for Alliance rep); read it from RACES.md if it moves again.
 const SABERON_IDS = [97];
 
-module.exports = { CoaCustom, networkAddresses, hostnameOk, parseRaces, SOURCES };
+module.exports = { CoaCustom, networkAddresses, hostnameOk, isTailscaleAddress, hostsHere, parseRaces, SOURCES };

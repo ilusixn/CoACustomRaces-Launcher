@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('launcher', Object.freeze({
   window: action => invoke('launcher:window', action),
   saveSettings: patch => invoke('launcher:settings', patch),
   chooseClient: () => invoke('launcher:choose-client'),
+  coaPatchClient: () => invoke('coa:patch-client'),
   chooseInstall: () => invoke('launcher:choose-install'),
   checkClient: force => invoke('launcher:client-check', force === true),
   updateClient: force => invoke('launcher:client-update', force === true),

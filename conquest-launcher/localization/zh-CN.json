@@ -1155,5 +1155,19 @@
   "Added a Server page: move your server to another folder or drive, see its ports and state, manage backups and change popular world settings.": "新增“服务器”页面：将服务器移动到其他文件夹或磁盘，查看端口与状态，管理备份并修改常用的世界设置。",
   "Added community addons to the Addons tab: install, update and remove addons from their authors' GitHub pages.": "“插件”标签页新增社区插件：可从作者的 GitHub 安装、更新和移除插件。",
   "The server folder is now checked when you create a server: network drives and OneDrive folders are refused.": "创建服务器时现在会检查文件夹：网络驱动器和 OneDrive 文件夹将被拒绝。",
-  "The launcher updates itself from GitHub releases.": "启动器会通过 GitHub 发布版自动更新。"
+  "The launcher updates itself from GitHub releases.": "启动器会通过 GitHub 发布版自动更新。",
+  "Added Tailscale so friends can join your server. A Tailscale address of this PC updates the server even from Join a friend.": "新增 Tailscale，方便朋友加入你的服务器。本机的 Tailscale 地址即使填在“加入好友”里也会更新服务器。",
+  "Added Add my CoA client and patch: choose a CoA client you already have and the launcher installs the Custom Races patch into it.": "新增“添加我的 CoA 客户端并安装补丁”：选择你已有的 CoA 客户端，启动器会把 Custom Races 补丁装进去。",
+  "Friends on your Tailscale network join": "你的 Tailscale 网络中的朋友通过此地址加入",
+  "Tailscale is not running. Install it and sign in on both PCs.": "Tailscale 未运行。请安装并在两台电脑上登录。",
+  "Play on someone else's server: enter their LAN, Hamachi, or Tailscale IP.": "加入别人的服务器：输入对方的局域网、Hamachi 或 Tailscale IP。",
+  "Hosting? Pick LAN, Hamachi, or Tailscale, then Start the server. Friends set \"Join a friend\" with that address. Allow worldserver and authserver through Windows Firewall (ports 3724 and 8085), including the Tailscale adapter.": "你在开服？选择局域网、Hamachi 或 Tailscale，然后启动服务器。朋友用该地址选择“加入好友”。请在 Windows 防火墙中放行 worldserver 和 authserver（端口 3724 和 8085），包括 Tailscale 网卡。",
+  "Choose your existing CoA client folder": "选择你已有的 CoA 客户端文件夹",
+  "Point this at the CoA client you already have. The Custom Races patch is installed into that folder: Data patches, addons and CoACustomRace.exe.": "指向你已有的 CoA 客户端。Custom Races 补丁会装进该文件夹：Data 补丁、插件和 CoACustomRace.exe。",
+  "Choose the folder containing Ascension.exe. Your client files stay; the patch is added on top.": "选择包含 Ascension.exe 的文件夹。原有客户端文件保留，补丁加在上面。",
+  "Add my CoA client and patch": "添加我的 CoA 客户端并安装补丁",
+  "Add my client and patch": "添加我的客户端并安装补丁",
+  "Choose your CoA client. The Custom Races patch installs next…": "选择你的 CoA 客户端。随后会安装 Custom Races 补丁…",
+  "Custom Races {0} installed on your client.": "Custom Races {0} 已安装到你的客户端。",
+  "Have a CoA client? <span>Add it and install the patch</span>": "已有 CoA 客户端？<span>添加并安装补丁</span>"
 }

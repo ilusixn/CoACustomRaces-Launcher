@@ -1155,5 +1155,19 @@
   "Added a Server page: move your server to another folder or drive, see its ports and state, manage backups and change popular world settings.": "Добавлена страница «Сервер»: перенос сервера в другую папку или на другой диск, порты и состояние, резервные копии и популярные настройки мира.",
   "Added community addons to the Addons tab: install, update and remove addons from their authors' GitHub pages.": "В разделе «Аддоны» появились аддоны сообщества: установка, обновление и удаление с GitHub авторов.",
   "The server folder is now checked when you create a server: network drives and OneDrive folders are refused.": "Папка сервера теперь проверяется при создании: сетевые диски и папки OneDrive отклоняются.",
-  "The launcher updates itself from GitHub releases.": "Лаунчер обновляется сам из релизов GitHub."
+  "The launcher updates itself from GitHub releases.": "Лаунчер обновляется сам из релизов GitHub.",
+  "Added Tailscale so friends can join your server. A Tailscale address of this PC updates the server even from Join a friend.": "Добавлен Tailscale, чтобы друзья могли зайти на ваш сервер. Адрес Tailscale этого компьютера обновляет сервер даже из пункта «Присоединиться к другу».",
+  "Added Add my CoA client and patch: choose a CoA client you already have and the launcher installs the Custom Races patch into it.": "Добавлено «Добавить мой клиент CoA и патч»: укажите уже установленный клиент CoA, и лаунчер установит в него патч Custom Races.",
+  "Friends on your Tailscale network join": "Друзья в вашей сети Tailscale заходят по адресу",
+  "Tailscale is not running. Install it and sign in on both PCs.": "Tailscale не запущен. Установите его и войдите на обоих компьютерах.",
+  "Play on someone else's server: enter their LAN, Hamachi, or Tailscale IP.": "Игра на чужом сервере: введите его IP в LAN, Hamachi или Tailscale.",
+  "Hosting? Pick LAN, Hamachi, or Tailscale, then Start the server. Friends set \"Join a friend\" with that address. Allow worldserver and authserver through Windows Firewall (ports 3724 and 8085), including the Tailscale adapter.": "Вы хост? Выберите LAN, Hamachi или Tailscale и запустите сервер. Друзья выбирают «Присоединиться к другу» с этим адресом. Разрешите worldserver и authserver в брандмауэре Windows (порты 3724 и 8085), включая адаптер Tailscale.",
+  "Choose your existing CoA client folder": "Выберите папку уже установленного клиента CoA",
+  "Point this at the CoA client you already have. The Custom Races patch is installed into that folder: Data patches, addons and CoACustomRace.exe.": "Укажите клиент CoA, который у вас уже есть. Патч Custom Races ставится в эту папку: патчи Data, аддоны и CoACustomRace.exe.",
+  "Choose the folder containing Ascension.exe. Your client files stay; the patch is added on top.": "Выберите папку с Ascension.exe. Файлы клиента остаются, патч добавляется поверх.",
+  "Add my CoA client and patch": "Добавить мой клиент CoA и патч",
+  "Add my client and patch": "Добавить мой клиент и патч",
+  "Choose your CoA client. The Custom Races patch installs next…": "Выберите клиент CoA. Затем установится патч Custom Races…",
+  "Custom Races {0} installed on your client.": "Custom Races {0} установлен в ваш клиент.",
+  "Have a CoA client? <span>Add it and install the patch</span>": "Уже есть клиент CoA? <span>Добавьте его и установите патч</span>"
 }

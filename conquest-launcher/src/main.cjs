@@ -19,7 +19,7 @@ const { Portal } = require('./portal.cjs');
 const { GameCredentials } = require('./game-credentials.cjs');
 const { requireGameClosed, isGameRunning, configureRealm } = require('./game-safety.cjs');
 const { createLauncherUpdates } = require('./launcher-updates.cjs');
-const { CoaCustom, networkAddresses, hostnameOk } = require('./coa-custom.cjs');
+const { CoaCustom, networkAddresses, hostnameOk, hostsHere } = require('./coa-custom.cjs');
 const { ServerTools } = require('./server-tools.cjs');
 const { SquidDashboard } = require('./squid-dashboard.cjs');
 const { CommunityAddons } = require('./community-addons.cjs');
@@ -506,6 +506,19 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     return saved;
   });
   handle('launcher:choose-client', chooseClientFolder);
+  // Existing CoA client (Ascension.exe) plus the usual Custom Races client patch. Does not change the server.
+  handle('coa:patch-client', async () => {
+    const previous = settings.installPath;
+    const chosen = await chooseClientFolder();
+    if (!chosen) return null;
+    if (!chosen.installed) {
+      await persist({ ...settings, installPath: previous });
+      throw new Error('That folder has no Ascension.exe. Choose the CoA client you already have.');
+    }
+    const tag = await mutateClient(() => coa.patchClient(chosen.path));
+    await persist({ ...settings, versions: { ...settings.versions, races: tag }, customOwned: ['Data/patch-T.MPQ', 'Data/patch-ZG.MPQ'] });
+    return { client: await clientInfo(), races: tag };
+  });
   handle('launcher:client-info', clientInfo);
   handle('launcher:launch', async () => {
     await requireIdleClient();
@@ -816,13 +829,15 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     return coa.setBotRaces(await requireServer(), allowed.filter(id => known.includes(id)), known);
   });
   handle('coa:set-realm', async (mode, address) => {
-    if (!['local', 'lan', 'hamachi', 'custom'].includes(mode)) throw new Error('Unknown realm mode.');
+    if (!['local', 'lan', 'hamachi', 'tailscale', 'custom'].includes(mode)) throw new Error('Unknown realm mode.');
     const value = mode === 'local' ? '127.0.0.1' : String(address || '').trim();
     if (!hostnameOk(value)) throw new Error('Enter a valid IP address or host name.');
     await persist({ ...settings, realmMode: mode, realmlist: value, localMode: true });
-    // Hosting: tell the running server which address to hand out. Joining someone else: the client realmlist is enough.
+    // Hosting: tell the running server which address to hand out. A Tailscale or LAN IP typed into
+    // "Join a friend" is still this PC, so the auth realm address has to change too. Someone else's
+    // address only updates the client realmlist.
     let server = 'not hosting';
-    if (mode !== 'custom' && settings.serverPath) {
+    if (hostsHere(mode, value, networkAddresses()) && settings.serverPath) {
       try { await coa.setRealmAddress(settings.serverPath, value); server = 'updated'; }
       catch { server = 'applies at next server start'; }
     }

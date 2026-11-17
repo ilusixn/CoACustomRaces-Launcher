@@ -25,7 +25,7 @@ function sanitize(value) {
   result.localMode = true; result.autoLoginGame = false; // no account service in this edition
   if (typeof value.serverPath === 'string' && (!value.serverPath || path.isAbsolute(value.serverPath))) result.serverPath = value.serverPath && path.normalize(value.serverPath);
   if (typeof value.oldServerPath === 'string' && (!value.oldServerPath || path.isAbsolute(value.oldServerPath))) result.oldServerPath = value.oldServerPath && path.normalize(value.oldServerPath);
-  if (['local', 'lan', 'hamachi', 'custom'].includes(value.realmMode)) result.realmMode = value.realmMode;
+  if (['local', 'lan', 'hamachi', 'tailscale', 'custom'].includes(value.realmMode)) result.realmMode = value.realmMode;
   if (typeof value.realmlist === 'string' && /^[a-zA-Z0-9.-]{1,253}$/.test(value.realmlist)) result.realmlist = value.realmlist;
   if (value.modules && typeof value.modules === 'object') result.modules = { squid: value.modules.squid === true, devMenu: value.modules.devMenu === true, races: value.modules.races === true };
   if (value.versions && typeof value.versions === 'object') for (const key of ['server', 'squid', 'devMenu', 'races']) if (typeof value.versions[key] === 'string' && /^[\w.-]{0,64}$/.test(value.versions[key])) result.versions[key] = value.versions[key];

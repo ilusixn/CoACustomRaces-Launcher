@@ -1155,5 +1155,19 @@
   "Added a Server page: move your server to another folder or drive, see its ports and state, manage backups and change popular world settings.": "Ajout d’une page Serveur : déplacer votre serveur vers un autre dossier ou disque, voir ses ports et son état, gérer les sauvegardes et modifier les réglages du monde les plus courants.",
   "Added community addons to the Addons tab: install, update and remove addons from their authors' GitHub pages.": "Ajout des addons de la communauté dans l’onglet Addons : installer, mettre à jour et supprimer des addons depuis le GitHub de leurs auteurs.",
   "The server folder is now checked when you create a server: network drives and OneDrive folders are refused.": "Le dossier du serveur est maintenant vérifié à la création : les disques réseau et les dossiers OneDrive sont refusés.",
-  "The launcher updates itself from GitHub releases.": "Le lanceur se met à jour depuis les publications GitHub."
+  "The launcher updates itself from GitHub releases.": "Le lanceur se met à jour depuis les publications GitHub.",
+  "Added Tailscale so friends can join your server. A Tailscale address of this PC updates the server even from Join a friend.": "Ajout de Tailscale pour que des amis rejoignent votre serveur. Une adresse Tailscale de ce PC met aussi à jour le serveur, même depuis Rejoindre un ami.",
+  "Added Add my CoA client and patch: choose a CoA client you already have and the launcher installs the Custom Races patch into it.": "Ajout de « Ajouter mon client CoA et le patch » : choisissez un client CoA que vous avez déjà, et le lanceur y installe le patch Custom Races.",
+  "Friends on your Tailscale network join": "Les amis de votre réseau Tailscale rejoignent",
+  "Tailscale is not running. Install it and sign in on both PCs.": "Tailscale n’est pas lancé. Installez-le et connectez-vous sur les deux PC.",
+  "Play on someone else's server: enter their LAN, Hamachi, or Tailscale IP.": "Jouer sur le serveur de quelqu’un d’autre : entrez son IP LAN, Hamachi ou Tailscale.",
+  "Hosting? Pick LAN, Hamachi, or Tailscale, then Start the server. Friends set \"Join a friend\" with that address. Allow worldserver and authserver through Windows Firewall (ports 3724 and 8085), including the Tailscale adapter.": "Vous hébergez ? Choisissez LAN, Hamachi ou Tailscale, puis démarrez le serveur. Vos amis choisissent « Rejoindre un ami » avec cette adresse. Autorisez worldserver et authserver dans le pare-feu Windows (ports 3724 et 8085), y compris la carte Tailscale.",
+  "Choose your existing CoA client folder": "Choisissez le dossier de votre client CoA existant",
+  "Point this at the CoA client you already have. The Custom Races patch is installed into that folder: Data patches, addons and CoACustomRace.exe.": "Indiquez le client CoA que vous avez déjà. Le patch Custom Races est installé dans ce dossier : patchs Data, addons et CoACustomRace.exe.",
+  "Choose the folder containing Ascension.exe. Your client files stay; the patch is added on top.": "Choisissez le dossier qui contient Ascension.exe. Vos fichiers restent ; le patch s’ajoute par-dessus.",
+  "Add my CoA client and patch": "Ajouter mon client CoA et le patch",
+  "Add my client and patch": "Ajouter mon client et le patch",
+  "Choose your CoA client. The Custom Races patch installs next…": "Choisissez votre client CoA. Le patch Custom Races s’installe ensuite…",
+  "Custom Races {0} installed on your client.": "Custom Races {0} installé sur votre client.",
+  "Have a CoA client? <span>Add it and install the patch</span>": "Vous avez un client CoA ? <span>Ajoutez-le et installez le patch</span>"
 }
