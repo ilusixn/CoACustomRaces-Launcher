@@ -293,6 +293,7 @@ actions.play = async () => {
     return;
   }
   let result = await api.launch();
+  if (result.cancelled) return;
   if (result.needsUpdate) {
     if (await performClientUpdate() === false) return;
     if (state.settings?.autoLaunchAfterUpdate === false) return;

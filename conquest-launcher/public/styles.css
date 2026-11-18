@@ -326,3 +326,6 @@ body.auth-locked .main-nav, body.auth-locked .utilitybar, body.auth-locked #main
 .server-value,.server-path{min-width:0;overflow-wrap:anywhere}
 .server-path{font-family:Consolas,monospace;font-size:13px}
 .server-old{align-items:center;flex-wrap:wrap;gap:10px}
+
+.check-row.ok .check-mark{color:#6fcf97}.check-row.warn .check-mark{color:#e0b14a}.check-row.bad .check-mark{color:#e5675d}
+.realm-checklist{margin-top:10px}.realm-checklist ol{margin:8px 0 8px 18px;padding:0}.realm-checklist li{margin:4px 0}

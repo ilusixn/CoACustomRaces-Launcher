@@ -21,6 +21,7 @@ const { requireGameClosed, isGameRunning, configureRealm } = require('./game-saf
 const { createLauncherUpdates } = require('./launcher-updates.cjs');
 const { CoaCustom, networkAddresses, hostnameOk, hostsHere } = require('./coa-custom.cjs');
 const { ServerTools } = require('./server-tools.cjs');
+const netcheck = require('./network-check.cjs');
 const { SquidDashboard } = require('./squid-dashboard.cjs');
 const { CommunityAddons } = require('./community-addons.cjs');
 const localTesting = !app.isPackaged && process.env.COA_LOCAL_TEST === '1';
@@ -536,6 +537,13 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
         if (release.needsUpdate) return { running: false, needsUpdate: true };
       }
     }
+    // Joining a friend: say so before the client sits on its login screen when nothing answers at their address.
+    if (settings.realmMode === 'custom' && !(settings.realmHosting === true) && !hostsHere('custom', settings.realmlist, networkAddresses(), false) && settings.realmlist !== '127.0.0.1') {
+      if (await netcheck.probe(settings.realmlist, 3724, 3000) === 'unreachable') {
+        const answer = await dialog.showMessageBox(window, { type: 'warning', buttons: [nativeText('Play anyway'), nativeText('Cancel')], defaultId: 1, cancelId: 1, message: `${nativeText("The server doesn't answer on port 3724:")} ${settings.realmlist}`, detail: nativeText('Ask the host to check that their server is running, that the address is right, that you are both connected to the same VPN, and that Windows Firewall allows the server (Server page > Allow through Windows Firewall).') });
+        if (answer.response !== 0) return { running: false, cancelled: true };
+      }
+    }
     await mutateClient(async () => {
       await clearClientCache(info.path);
       await configureRealm(info.path, settings.realmlist);
@@ -675,7 +683,9 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     if (!settings.serverPath || !(await fs.stat(path.join(settings.serverPath, 'Scripts/manage.py')).catch(() => null))) throw new Error('Create or locate your server first.');
     return settings.serverPath;
   };
-  const realmAddress = () => settings.realmMode === 'local' ? '127.0.0.1' : settings.realmlist;
+  // The address the auth server hands out. "Join a friend" is someone else's server unless this PC hosts with that address.
+  const hosting = () => hostsHere(settings.realmMode, settings.realmlist, networkAddresses(), settings.realmHosting === true);
+  const realmAddress = () => settings.realmMode === 'local' || !hosting() ? '127.0.0.1' : settings.realmlist;
   const dashboard = new SquidDashboard({ coa });
   const serverTools = new ServerTools({ coa, notify: status => sendStatus('coa:progress', status) });
   app.on('before-quit', () => dashboard.stopSync());
@@ -749,7 +759,9 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
   });
   handle('coa:troubleshoot', async () => {
     const info = await clientInfo();
-    return coa.troubleshoot({ serverPath: settings.serverPath, clientPath: info.path || '', realmlist: settings.realmlist, realmMode: settings.realmMode, modules: settings.modules, versions: settings.versions });
+    let extra = [];
+    if (settings.serverPath) { try { extra = (await networkReport()).items; } catch { /* the rest of the report still helps */ } }
+    return coa.troubleshoot({ serverPath: settings.serverPath, clientPath: info.path || '', realmlist: settings.realmlist, realmMode: settings.realmMode, modules: settings.modules, versions: settings.versions, serverAddress: settings.serverPath ? realmAddress() : settings.realmlist, extra });
   });
   // ---- accounts and deleting ----
   handle('coa:accounts', async () => coa.listAccounts(await requireServer()));
@@ -785,6 +797,30 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
   handle('server:delete-old', async () => { await serverTools.deleteOld(settings.oldServerPath, await requireServer()); await persist({ ...settings, oldServerPath: '' }); return true; });
   handle('server:forget-old', async () => { await persist({ ...settings, oldServerPath: '' }); return true; });
   handle('server:set-ports', async values => serverTools.setPorts(await requireServer(), values && typeof values === 'object' ? values : {}));
+  // Can friends reach this server? Reads the realm list, listening sockets and Windows Firewall (nothing is changed).
+  const networkReport = async () => {
+    const root = await requireServer();
+    const ports = await serverTools.ports(root);
+    const authExe = path.join(root, 'Core', 'authserver.exe'); const worldExe = path.join(root, 'Core', 'worldserver.exe');
+    const status = await serverTools.status(root);
+    let dbAddress = null;
+    if (status?.mysql) { const row = await coa.sql(root, 'SELECT address FROM acore_auth.realmlist WHERE id=1;').catch(() => null); dbAddress = row === null ? null : row.trim(); }
+    const snap = await netcheck.snapshot({ authPort: ports.authPort, worldPort: ports.worldPort, authExe, worldExe });
+    return { ...netcheck.evaluate(snap, { authPort: ports.authPort, worldPort: ports.worldPort, authExe, worldExe, running: !!(status && (status.auth || status.world)), address: realmAddress(), dbAddress, mode: settings.realmMode, hosting: hosting() }), ports, address: realmAddress() };
+  };
+  handle('server:network', networkReport);
+  // One UAC prompt, a fixed script with validated ports and paths. Declining changes nothing.
+  const firewallAction = async script => {
+    const result = await netcheck.elevate(script);
+    if (result.declined) throw new Error('Windows asked for permission and it was declined, so nothing was changed.');
+    if (!result.ok) throw new Error('The firewall change did not complete (administrator rights are needed). Nothing else was changed.');
+    return networkReport();
+  };
+  handle('server:firewall-allow', async () => {
+    const root = await requireServer(); const ports = await serverTools.ports(root);
+    return firewallAction(netcheck.allowScript({ authPort: ports.authPort, worldPort: ports.worldPort, authExe: path.join(root, 'Core', 'authserver.exe'), worldExe: path.join(root, 'Core', 'worldserver.exe') }));
+  });
+  handle('server:firewall-remove', async () => { await requireServer(); return firewallAction(netcheck.removeScript()); });
   handle('server:world-options', async () => serverTools.worldOptions(await requireServer()));
   handle('server:set-world-option', async (key, value) => serverTools.setWorldOption(await requireServer(), String(key), value));
   handle('coa:delete-server', async () => {
@@ -828,20 +864,23 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     const known = [...new Set((await coa.races()).flatMap(race => race.ids))];
     return coa.setBotRaces(await requireServer(), allowed.filter(id => known.includes(id)), known);
   });
-  handle('coa:set-realm', async (mode, address) => {
+  handle('coa:set-realm', async (mode, address, hostingChoice) => {
     if (!['local', 'lan', 'hamachi', 'tailscale', 'custom'].includes(mode)) throw new Error('Unknown realm mode.');
     const value = mode === 'local' ? '127.0.0.1' : String(address || '').trim();
     if (!hostnameOk(value)) throw new Error('Enter a valid IP address or host name.');
-    await persist({ ...settings, realmMode: mode, realmlist: value, localMode: true });
+    await persist({ ...settings, realmMode: mode, realmlist: value, realmHosting: mode === 'custom' && hostingChoice === true, localMode: true });
     // Hosting: tell the running server which address to hand out. A Tailscale or LAN IP typed into
     // "Join a friend" is still this PC, so the auth realm address has to change too. Someone else's
     // address only updates the client realmlist.
     let server = 'not hosting';
-    if (hostsHere(mode, value, networkAddresses()) && settings.serverPath) {
+    let restart = false;
+    if (hosting() && settings.serverPath) {
       try { await coa.setRealmAddress(settings.serverPath, value); server = 'updated'; }
       catch { server = 'applies at next server start'; }
+      // Friends can only connect while the auth and world servers listen on every address; that is applied when the server starts.
+      try { const changed = await coa.setBind(settings.serverPath, value !== '127.0.0.1'); const running = await serverTools.status(settings.serverPath); restart = changed && !!(running && (running.auth || running.world)); } catch { /* applied at the next start */ }
     }
-    return { realmlist: value, server };
+    return { realmlist: value, server, restart };
   });
   handle('coa:open', async key => {
     const urls = { coffee: 'https://buymeacoffee.com/ilusixne', duff: 'https://github.com/Duff-SPP/ConquestOfAzerothCoreLauncher', races: 'https://github.com/ilusixn/CustomRacesCoa/releases/tag/coa-custom-2.0', devmenu: 'https://github.com/ilusixn/ilusixn-dev-menu/releases/latest', squid: 'https://github.com/Zyth45/squidbots-addon', hamachi: 'https://vpn.net/' };

@@ -69,6 +69,12 @@ async function showLegalNotices() {
 }
 
 const changelogEntries = [
+  { version: '1.0.4', items: [
+    'Fixed friends not being able to connect: the server now listens on every address when you host on LAN, Hamachi, Tailscale or another address (it only listened on this PC before).',
+    'The Server page checks the realm address, open ports and Windows Firewall, and can add the firewall rules with one permission prompt.',
+    'Hosting with another VPN or a public IP: tick "This is the address of my own server" in Realmlist.',
+    'Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.'
+  ] },
   { version: '1.0.3', items: [
     'Play starts the CoA client already on this PC when no full client has been published.'
   ] },
@@ -285,7 +291,7 @@ const api = window.launcher || {
   onGameExit: () => () => {},
 };
 const state = {
-  page: 'home', serverTab: 'overview', serverInfo: null, serverSize: null, serverOldSize: null, serverBackups: null, serverWorld: undefined, serverWorldError: '', serverWorldQuery: '', community: null, communityError: '', communityBusy: '', communityPct: 0, communityStatus: '', newsTab: 'latest', settingsTab: 'launcher', addonTab: 'browse',
+  page: 'home', serverNet: null, serverNetBusy: false, serverTab: 'overview', serverInfo: null, serverSize: null, serverOldSize: null, serverBackups: null, serverWorld: undefined, serverWorldError: '', serverWorldQuery: '', community: null, communityError: '', communityBusy: '', communityPct: 0, communityStatus: '', newsTab: 'latest', settingsTab: 'launcher', addonTab: 'browse',
   config: emptyConfig, settings: defaultSettings, client: { installed: false, path: '', running: false }, version: '0.2.0',
   issues: [], issuesLoading: false, issuesError: '', issueQuery: '', databaseStatus: 'loading', databaseMessage: '',
   addons: [], addonLoading: false, addonError: '', addonQuery: '', addonCategory: 'all', addonFolderCount: 0,
@@ -375,7 +381,9 @@ async function showRealm() {
   const s = state.settings;
   const option = (mode, title, text, value) => lh`<label class="realm-option"><input type="radio" name="realm-mode" value="${mode}" data-address="${escape(value || '')}" ${s.realmMode === mode ? 'checked' : ''}><span><span class="setting-title">${title}</span><span class="setting-description">${text}</span></span></label>`;
   const lan = net.lan[0] || ''; const ham = net.hamachi[0] || ''; const ts = (net.tailscale || [])[0] || '';
-  openModal(lh`${modalHeader(t('Realmlist'), t('How players reach your server'))}<div class="modal-body">${option('local', t('Local'), t('Only this PC plays (127.0.0.1).'), '127.0.0.1')}${option('lan', t('LAN play'), lan ? `${t('Players on your home network join')} ${lan}` : t('No LAN address found on this PC.'), lan)}${option('hamachi', 'LogMeIn Hamachi', ham ? `${t('Friends in your Hamachi network join')} ${ham}` : t('Hamachi is not running. Install and join a network first.'), ham)}${option('tailscale', 'Tailscale', ts ? `${t('Friends on your Tailscale network join')} ${ts}` : t('Tailscale is not running. Install it and sign in on both PCs.'), ts)}${option('custom', t('Join a friend'), t('Play on someone else\'s server: enter their LAN, Hamachi, or Tailscale IP.'), s.realmMode === 'custom' ? s.realmlist : '')}<label class="form-label" for="realm-address">${t('Address')}</label><input type="text" id="realm-address" value="${escape(s.realmlist || '127.0.0.1')}" spellcheck="false"><div class="info-box">${icon('info')}<span>${t('Hosting? Pick LAN, Hamachi, or Tailscale, then Start the server. Friends set "Join a friend" with that address. Allow worldserver and authserver through Windows Firewall (ports 3724 and 8085), including the Tailscale adapter.')} <button class="link-button" data-action="coa-link" data-link="hamachi">LogMeIn Hamachi</button></span></div></div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button" data-action="coa-realm-save">${t('Save')}</button></div>`);
+  const hostAddress = s.realmMode === 'local' ? '' : (s.realmMode !== 'custom' || s.realmHosting) ? s.realmlist : '';
+  const hostLine = hostAddress ? lt`Hosting: tell friends to open Realmlist, choose Join a friend and enter ${hostAddress}. Then Start the server.` : t('Hosting? Pick LAN, Hamachi or Tailscale, then Start the server. Friends choose Join a friend and enter the address shown here.');
+  openModal(lh`${modalHeader(t('Realmlist'), t('How players reach your server'))}<div class="modal-body">${option('local', t('Local'), t('Only this PC plays (127.0.0.1).'), '127.0.0.1')}${option('lan', t('LAN play'), lan ? `${t('Players on your home network join')} ${lan}` : t('No LAN address found on this PC.'), lan)}${option('hamachi', 'LogMeIn Hamachi', ham ? `${t('Friends in your Hamachi network join')} ${ham}` : t('Hamachi is not running. Install and join a network first.'), ham)}${option('tailscale', 'Tailscale', ts ? `${t('Friends on your Tailscale network join')} ${ts}` : t('Tailscale is not running. Install it and sign in on both PCs.'), ts)}${option('custom', t('Join a friend'), t('Play on someone else\'s server: enter their LAN, Hamachi, or Tailscale IP.'), s.realmMode === 'custom' ? s.realmlist : '')}<label class="form-label" for="realm-address">${t('Address')}</label><input type="text" id="realm-address" value="${escape(s.realmlist || '127.0.0.1')}" spellcheck="false"><label class="setting-row realm-hosting"><span><span class="setting-title">${t('This is the address of my own server (I host with it)')}</span><span class="setting-description">${t('Tick this for another VPN (ZeroTier, Radmin), a public IP or a DNS name that leads to this PC. Without it, an address this PC does not own is treated as a friend\'s server.')}</span></span><input class="switch" type="checkbox" id="realm-hosting" ${s.realmHosting ? 'checked' : ''}></label><div class="info-box">${icon('info')}<span>${hostLine}</span></div><details class="realm-checklist"><summary>${t('Can\'t connect? Check this')}</summary><ol><li>${t('Everyone is connected to the same VPN (Tailscale, Hamachi) and sees the host\'s address.')}</li><li>${t('The server is running and the realm address below is the one friends type. The Server page checks it.')}</li><li>${t('Windows Firewall lets the server in: Server page > Allow through Windows Firewall (one permission prompt).')}</li><li>${t('Ports are open: login 3724 and world 8085 by default (Settings/repack.json). Behind a router with a public IP, forward them to this PC.')}</li></ol><button class="secondary-button" data-action="server-net-open">${t('Open the network checks')}</button> <button class="link-button" data-action="coa-link" data-link="hamachi">LogMeIn Hamachi</button></details></div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button" data-action="coa-realm-save">${t('Save')}</button></div>`);
 }
 function formatSize(bytes) { return bytes > 2 ** 30 ? (bytes / 2 ** 30).toFixed(2) + ' GB' : (bytes / 2 ** 20).toFixed(1) + ' MB'; }
 const backupReasons = { 'before-reset': 'Before a bot reset', manual: 'Manual', 'before-update': 'Before a server update', 'before-restore': 'Before a restore', 'before-move': 'Before moving the server' };
@@ -440,8 +448,22 @@ function serverOverview() {
   const status = busy ? lh`<div class="coa-bar on ${state.coaPct ? '' : 'wait'}"><i id="coa-bar-fill" style="width:${state.coaPct || 0}%"></i></div><div id="coa-status" class="coa-status" role="status">${escape(state.coaStatus || '')}</div>` : lh`<div id="coa-status" class="coa-status" role="status">${escape(state.coaStatus || '')}</div>`;
   return lh`${old}<section class="server-card"><h3 class="bot-heading">${t('Location')}</h3>${row(t('Folder'), lh`<span class="server-path">${escape(s.serverPath)}</span>`)}${row(t('Drive'), escape(drive))}${row(t('Server size'), size)}<div class="button-row"><button class="secondary-button" data-action="server-open-folder">${icon('folder')}${t('Open folder')}</button><button class="gold-button" data-action="server-move" ${busy || info.running ? 'disabled' : ''}>${icon('download')}${t('Move server to another folder or drive')}</button><button class="secondary-button" data-action="coa-locate" ${busy ? 'disabled' : ''}>${t('Locate another server')}</button><button class="secondary-button" data-action="server-forget-ask" ${busy || info.running ? 'disabled' : ''}>${t('Forget this server')}</button></div><p class="page-description">${info.running ? t('Stop the server to move or forget it.') : t('Moving copies the server, checks the copy, and only then switches. The old folder stays until you delete it. Forgetting does not delete any files.')}</p></section>
   <section class="server-card"><h3 class="bot-heading">${t('Server')}</h3>${row(t('Version'), escape(version))}${row(t('State'), escape(running) + (info.startedAt ? ' · ' + escape(serverUptime(info.startedAt)) : ''))}${row(t('Realm'), info.realm ? escape(`${info.realm.name} (${info.realm.address})`) : escape(t(s.realmMode === 'local' ? 'Local' : s.realmMode === 'lan' ? 'LAN play' : s.realmMode === 'hamachi' ? 'Hamachi' : s.realmMode === 'tailscale' ? 'Tailscale' : 'Custom') + ': ' + (s.realmMode === 'local' ? '127.0.0.1' : s.realmlist)))}${row(t('Ports'), lh`${t('Login')} ${info.ports.auth} · ${t('World')} ${info.ports.world} · MySQL ${info.ports.mysql} · RA ${info.ports.ra} <button class="link-button" data-action="server-ports" ${info.running ? 'disabled' : ''}>${t('Change ports')}</button>`)}<div class="button-row"><button class="secondary-button" data-action="coa-start" ${busy ? 'disabled' : ''}>${icon('play')}${t('Start')}</button><button class="secondary-button" data-action="coa-stop" ${busy ? 'disabled' : ''}>${t('Stop')}</button><button class="secondary-button" data-action="server-restart" ${busy ? 'disabled' : ''}>${icon('refresh')}${t('Restart')}</button><button class="secondary-button" data-action="coa-realm">${icon('globe')}${t('Realmlist')}</button></div>${status}</section>
+${networkCard()}
   <section class="server-card"><h3 class="bot-heading">${t('Launcher')}</h3>${row(t('Version'), escape(state.version || ''))}${row(t('Updates'), escape(launcher.message ? tm(launcher.message) : t('Ready to check launcher updates.')))}<div class="button-row"><button class="secondary-button" data-action="server-launcher-check">${icon('refresh')}${t('Check for updates')}</button>${launcher.phase === 'downloaded' ? lh`<button class="gold-button" data-action="server-launcher-install">${t('Restart to install')}</button>` : ''}</div></section>
   <div class="danger-zone"><strong>${t('Danger zone')}</strong><span>${t('Deleting cannot be undone.')}</span><button class="secondary-button danger-button" data-action="coa-delete-server-ask" ${busy ? 'disabled' : ''}>${t('Delete server')}</button></div>`;
+}
+function networkCard() {
+  const n = state.serverNet; const busy = !!state.serverNetBusy;
+  const mark = ok => ok === true ? '✔' : ok === 'warn' ? '!' : '✖';
+  const rows = n ? n.items.map(i => lh`<div class="check-row ${i.ok === true ? 'ok' : i.ok === 'warn' ? 'warn' : 'bad'}"><span class="check-mark">${mark(i.ok)}</span><span><strong>${escape(tm(i.name))}</strong><small>${escape(tm(i.detail))}</small>${i.ok !== true && i.fix ? lh`<small class="check-fix">${t('Fix')}: ${escape(tm(i.fix))}</small>` : ''}</span></div>`).join('') : (busy ? lh`<p class="page-description">${t('Checking…')}</p>` : lh`<p class="page-description">${t('Checks whether friends can reach this server: the address it hands out, the open ports and Windows Firewall.')}</p>`);
+  const fw = n?.firewall;
+  return lh`<section class="server-card"><h3 class="bot-heading">${t('Network for friends')}</h3><div class="check-list">${rows}</div><div class="button-row"><button class="secondary-button" data-action="server-net-check" ${busy ? 'disabled' : ''}>${icon('refresh')}${t('Check again')}</button><button class="gold-button" data-action="server-fw-ask" ${busy ? 'disabled' : ''}>${t('Allow through Windows Firewall')}</button>${fw?.installed ? lh`<button class="secondary-button danger-button" data-action="server-fw-remove-ask" ${busy ? 'disabled' : ''}>${t('Remove rules')}</button>` : ''}</div></section>`;
+}
+async function loadNetwork() {
+  if (!state.settings.serverPath) return;
+  state.serverNetBusy = true; render();
+  try { state.serverNet = await api.serverNetwork(); } catch (error) { toast(tm(error.message)); }
+  finally { state.serverNetBusy = false; if (state.page === 'server') render(); }
 }
 function serverBackups() {
   const list = state.serverBackups;
@@ -473,7 +495,7 @@ function serverPage() {
 async function loadServer(tab = state.serverTab || 'overview') {
   if (!state.settings.serverPath) return;
   try {
-    if (tab === 'overview') state.serverInfo = await api.serverInfo();
+    if (tab === 'overview') { state.serverInfo = await api.serverInfo(); if (!state.serverNet && !state.serverNetBusy && state.settings.realmMode !== 'local') setTimeout(loadNetwork, 0); }
     else if (tab === 'backups') { state.serverInfo = await api.serverInfo(); state.serverBackups = await api.coaBackups(); }
     else { state.serverWorldError = ''; try { state.serverWorld = await api.serverWorldOptions(); } catch (error) { state.serverWorld = null; state.serverWorldError = error.message; } }
   } catch (error) { state.serverFailed = tab; toast(tm(error.message)); }
@@ -1254,7 +1276,7 @@ const actions = {
   play: async () => {
     if (state.client.running) { toast(t('Your game is already running.')); return; }
     if (!state.client.installed) { showInstall(); return; }
-    await api.launch(); state.client.running = true; render();
+    const started = await api.launch(); if (started?.cancelled) return; state.client.running = true; render();
   },
   'play-options': element => showPopover(element, 'play-options'),
   realms: element => showPopover(element, 'realms'),
@@ -1376,6 +1398,15 @@ const actions = {
   'coa-link': element => api.coaOpen(element.dataset.link),
   'coa-modules': showModules,
   'coa-realm': showRealm,
+  'server-net-check': () => loadNetwork(),
+  'server-net-open': () => { closeModal(); state.page = 'server'; state.serverTab = 'overview'; render(); loadNetwork(); },
+  'server-fw-ask': () => {
+    const p = state.serverNet?.ports;
+    openModal(lh`${modalHeader(t('Allow through Windows Firewall'), t('One permission prompt from Windows'))}<div class="modal-body"><p>${t('The launcher will ask Windows for permission once, then add these inbound rules (all network types, so VPN adapters count too):')}</p><ul><li>${t('TCP port')} ${p ? p.authPort : 3724}: ${t('login (auth)')}</li><li>${t('TCP port')} ${p ? p.worldPort : 8085}: ${t('world')}</li><li>${t('The programs authserver.exe and worldserver.exe of your server folder')}</li></ul><p>${t('They are named "CoA Custom Races server …". No other rule is touched, and you can remove them with Remove rules. If you decline the prompt, nothing changes.')}</p></div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button" data-action="server-fw-go">${t('Allow')}</button></div>`, 'backup-dialog');
+  },
+  'server-fw-go': async () => { closeModal(); state.serverNetBusy = true; render(); try { state.serverNet = await api.serverFirewallAllow(); toast(t('The firewall rules were added.')); } catch (error) { toast(tm(error.message)); } finally { state.serverNetBusy = false; render(); } },
+  'server-fw-remove-ask': () => openModal(lh`${modalHeader(t('Remove the firewall rules?'), '')}<div class="modal-body"><p>${t('Only the rules named "CoA Custom Races server …" are removed. Friends can no longer connect until you allow the server again.')}</p></div><div class="modal-footer"><button class="secondary-button" data-action="dismiss-modal">${t('Cancel')}</button><button class="gold-button danger-button" data-action="server-fw-remove-go">${t('Remove rules')}</button></div>`, 'backup-dialog'),
+  'server-fw-remove-go': async () => { closeModal(); state.serverNetBusy = true; render(); try { state.serverNet = await api.serverFirewallRemove(); toast(t('The firewall rules were removed.')); } catch (error) { toast(tm(error.message)); } finally { state.serverNetBusy = false; render(); } },
   'server-tab': element => { state.serverFailed = ''; state.serverTab = element.dataset.tab; if (state.serverTab === 'world') state.serverWorld = undefined; if (state.serverTab === 'backups') state.serverBackups = null; render(); },
   'server-size': async () => { state.serverSize = { bytes: 0 }; state.serverSize = await api.serverSize(); render(); },
   'server-old-size': async () => { state.serverOldSize = await api.serverOldSize(); render(); },
@@ -1442,10 +1473,12 @@ const actions = {
     const picked = modalContent.querySelector('input[name="realm-mode"]:checked');
     if (!picked) { toast(t('Choose how players connect.')); return; }
     const address = picked.value === 'local' ? '127.0.0.1' : modalContent.querySelector('#realm-address').value;
-    const result = await api.coaSetRealm(picked.value, address);
-    Object.assign(state.settings, { realmMode: picked.value, realmlist: result.realmlist, localMode: true });
-    closeModal(); render();
-    toast(lt`Realmlist set to ${result.realmlist}. Server: ${result.server}.`);
+    const hostingBox = modalContent.querySelector('#realm-hosting');
+    const hostingChoice = picked.value === 'custom' && !!hostingBox?.checked;
+    const result = await api.coaSetRealm(picked.value, address, hostingChoice);
+    Object.assign(state.settings, { realmMode: picked.value, realmlist: result.realmlist, realmHosting: hostingChoice, localMode: true });
+    state.serverNet = null; closeModal(); render();
+    toast(lt`Realmlist set to ${result.realmlist}. Server: ${result.server}.` + (result.restart ? ' ' + t('Restart the server so friends can connect.') : ''));
   }
 };
 main.addEventListener('input', event => {

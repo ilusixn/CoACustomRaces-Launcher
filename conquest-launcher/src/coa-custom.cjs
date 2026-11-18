@@ -62,8 +62,9 @@ function networkAddresses() {
 }
 
 // "Join a friend" is client-only, unless the typed address is one of this PC's own adapters.
-function hostsHere(mode, address, net) {
+function hostsHere(mode, address, net, hosting = false) {
   if (mode !== 'custom') return true;
+  if (hosting === true) return true; // the player said so: needed for a public IP, DNS name, ZeroTier or Radmin address this PC cannot recognise
   const own = new Set([...(net.lan || []), ...(net.hamachi || []), ...(net.tailscale || [])]);
   return own.has(address);
 }
@@ -253,11 +254,27 @@ class CoaCustom {
     return this.exclusive(async () => {
       this.emit('server', 'Starting the server (first start can take several minutes)…');
       await this.disableCompanions(root);
+      // The package listens on 127.0.0.1 only. Friends can reach the server only when the login and world servers listen on every address.
+      await this.setBind(root, !!realmAddress && realmAddress !== '127.0.0.1');
       await this.manage(root, 'start-all');
       // start-all resets the realm address to 127.0.0.1; put the chosen one back (authserver re-reads it within seconds).
       if (realmAddress && realmAddress !== '127.0.0.1') await this.setRealmAddress(root, realmAddress);
       this.emit('ready', 'Server is running.');
     });
+  }
+
+  // BindIP of the auth and world server lives in the settings templates (the real configs are regenerated from them at every start).
+  // Open = every address (needed for LAN, VPN and public play); closed = this PC only. RA and MySQL always stay on 127.0.0.1.
+  async setBind(root, open) {
+    let changed = false;
+    for (const name of ['authserver.conf.template', 'worldserver.conf.template']) {
+      const file = path.join(root, 'Settings', name);
+      const text = await fsp.readFile(file, 'utf8').catch(() => null);
+      if (text === null) continue;
+      const next = text.replace(/^BindIP[ \t]*=[^\r\n]*/m, `BindIP = "${open ? '0.0.0.0' : '127.0.0.1'}"`);
+      if (next !== text) { await fsp.writeFile(file, next); changed = true; }
+    }
+    return changed;
   }
 
   async stopServer(root) {
@@ -788,7 +805,7 @@ class CoaCustom {
   }
 
   // Each check: { group, name, ok, detail, fix }. ok may be true, false or 'warn'.
-  async troubleshoot({ serverPath, clientPath, realmlist, realmMode, modules, versions }) {
+  async troubleshoot({ serverPath, clientPath, realmlist, realmMode, modules, versions, serverAddress = realmlist, extra = [] }) {
     const out = [];
     const add = (group, name, ok, detail, fix = '') => out.push({ group, name, ok, detail, fix });
     const exists = async p => !!(await fsp.stat(p).catch(() => null));
@@ -832,7 +849,7 @@ class CoaCustom {
       if (up) {
         const rows = await this.sql(serverPath, "SELECT address FROM acore_auth.realmlist WHERE id=1;").catch(() => null);
         const addr = rows ? rows.trim() : null;
-        add('Server', 'Realm address', addr === null ? 'warn' : addr === realmlist, addr === null ? 'Could not read the realm list.' : `Server hands out ${addr}; launcher is set to ${realmlist}.`, 'Realmlist > Save fixes it.');
+        add('Server', 'Realm address', addr === null ? 'warn' : addr === serverAddress, addr === null ? 'Could not read the realm list.' : `Server hands out ${addr}; launcher is set to ${serverAddress}.`, 'Realmlist > Save fixes it.');
         const chars = await this.sql(serverPath, 'SELECT COUNT(*) FROM acore_characters.characters;').catch(() => null);
         if (chars !== null) add('Server', 'Characters', true, `${chars.trim()} characters in the database.`);
       }
@@ -848,6 +865,7 @@ class CoaCustom {
     add('Network', 'GitHub (updates)', github, github ? 'Reachable.' : 'Cannot reach GitHub; updates and downloads will fail.', 'Check your internet connection or firewall.');
     const coaService = await this.fetch('https://launcher-api.coa-development.org/downloads/client/latest.json').then(r => r.ok, () => false);
     add('Network', 'CoA client service', coaService, coaService ? 'Reachable.' : 'Cannot reach the client download service.', 'Check your internet connection; try again later.');
+    out.push(...extra);
     return out;
   }
 

@@ -13,6 +13,7 @@ What this edition adds (code in `conquest-launcher/src/coa-custom.cjs`):
   * **ilusixn Dev Menu**: the [/dev addon](https://github.com/ilusixn/ilusixn-dev-menu). Its server module needs a worldserver built with it.
   * **CoA Custom Races V2**: turns custom races on in the server and installs the [V2 client files](https://github.com/ilusixn/CustomRacesCoa/releases/tag/coa-custom-2.0); the game then starts with `CoACustomRace.exe`.
 * **Realmlist**: Local, LAN, LogMeIn Hamachi (addresses detected automatically) or Join a friend. Hosting also sets the realm address the server hands out.
+* **Hosting for friends**: the Server page checks the realm address, listening ports and Windows Firewall, and can add the firewall rules (one permission prompt). See docs/HOSTING-FOR-FRIENDS.md.
 * **Play on my own server**: no coa-development.org account needed.
 * **Buy me a coffee**: https://buymeacoffee.com/ilusixne
 
