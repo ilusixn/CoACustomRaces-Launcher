@@ -1243,5 +1243,14 @@
   "Fixed friends not being able to connect: the server now listens on every address when you host on LAN, Hamachi, Tailscale or another address (it only listened on this PC before).": "修复朋友无法连接的问题：通过局域网、Hamachi、Tailscale 或其他地址做主机时，服务器现在会监听所有地址（以前只监听本机）。",
   "The Server page checks the realm address, open ports and Windows Firewall, and can add the firewall rules with one permission prompt.": "“服务器”页面会检查服务器地址、开放端口和 Windows 防火墙，并可通过一次权限确认添加防火墙规则。",
   "Hosting with another VPN or a public IP: tick \"This is the address of my own server\" in Realmlist.": "使用其他 VPN 或公网 IP 做主机：在 Realmlist 中勾选“这是我自己服务器的地址”。",
-  "Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.": "加入朋友：如果其地址没有响应，开始游戏时会直接提示，而不是停在登录界面等待。"
+  "Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.": "加入朋友：如果其地址没有响应，开始游戏时会直接提示，而不是停在登录界面等待。",
+  "The race list now comes from the latest release, so new races (such as Snagtooth) appear in the Bot races picker.": "种族列表现在来自最新发布版本，因此新种族（如 Snagtooth）会出现在机器人种族选择中。",
+  "Races the server does not have yet are shown as \"needs a server update\" and cannot be ticked.": "服务器尚未包含的种族会显示“需要更新服务器”，且无法勾选。",
+  "Your own server now gets the Races server files (DBC, maps and database) from Apply modules and the Updates tab, without replacing its server program.": "您自己的服务器现在可通过“应用模块”和“更新”标签获得种族的服务器文件（DBC、地图和数据库），且不会替换服务器程序。",
+  "Home: a notice and a button to download the CoA client while none is set.": "主页：在尚未设置客户端时显示提示和下载 CoA 客户端的按钮。",
+  "needs a server update": "需要更新服务器",
+  "For now you need your own CoA client. Fetch it from here:": "目前您需要自己的 CoA 客户端。请从这里获取：",
+  "Download the CoA client": "下载 CoA 客户端",
+  "Starts the official installer download.": "开始下载官方安装程序。",
+  "Your own server: Races updates its DBC files, maps and database. The server program itself only changes with a new server image.": "您自己的服务器：种族模块会更新其 DBC 文件、地图和数据库。服务器程序本身只会随新的服务器镜像更改。"
 }

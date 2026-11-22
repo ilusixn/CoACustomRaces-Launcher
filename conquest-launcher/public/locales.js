@@ -1244,7 +1244,16 @@ launcherI18n.register("fr", "Français", {
   "Fixed friends not being able to connect: the server now listens on every address when you host on LAN, Hamachi, Tailscale or another address (it only listened on this PC before).": "Correction : les amis ne pouvaient pas se connecter. Le serveur écoute maintenant sur toutes les adresses quand vous hébergez en LAN, Hamachi, Tailscale ou autre (il n’écoutait que ce PC avant).",
   "The Server page checks the realm address, open ports and Windows Firewall, and can add the firewall rules with one permission prompt.": "La page Serveur vérifie l’adresse du royaume, les ports ouverts et le pare-feu Windows, et peut ajouter les règles de pare-feu avec une seule demande d’autorisation.",
   "Hosting with another VPN or a public IP: tick \"This is the address of my own server\" in Realmlist.": "Hébergement avec un autre VPN ou une IP publique : cochez « C’est l’adresse de mon propre serveur » dans Realmlist.",
-  "Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.": "Rejoindre un ami : Jouer vous prévient quand rien ne répond à son adresse, au lieu d’attendre sur l’écran de connexion."
+  "Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.": "Rejoindre un ami : Jouer vous prévient quand rien ne répond à son adresse, au lieu d’attendre sur l’écran de connexion.",
+  "The race list now comes from the latest release, so new races (such as Snagtooth) appear in the Bot races picker.": "La liste des races vient maintenant de la dernière version, donc les nouvelles races (comme Snagtooth) apparaissent dans le choix des races de bots.",
+  "Races the server does not have yet are shown as \"needs a server update\" and cannot be ticked.": "Les races que le serveur n’a pas encore sont indiquées « nécessite une mise à jour du serveur » et ne peuvent pas être cochées.",
+  "Your own server now gets the Races server files (DBC, maps and database) from Apply modules and the Updates tab, without replacing its server program.": "Votre propre serveur reçoit maintenant les fichiers serveur de Races (DBC, cartes et base de données) via Appliquer les modules et l’onglet Mises à jour, sans remplacer son programme serveur.",
+  "Home: a notice and a button to download the CoA client while none is set.": "Accueil : un message et un bouton pour télécharger le client CoA tant qu’aucun n’est défini.",
+  "needs a server update": "nécessite une mise à jour du serveur",
+  "For now you need your own CoA client. Fetch it from here:": "Pour l’instant, vous avez besoin de votre propre client CoA. Récupérez-le ici :",
+  "Download the CoA client": "Télécharger le client CoA",
+  "Starts the official installer download.": "Lance le téléchargement de l’installateur officiel.",
+  "Your own server: Races updates its DBC files, maps and database. The server program itself only changes with a new server image.": "Votre propre serveur : Races met à jour ses fichiers DBC, cartes et base de données. Le programme serveur ne change qu’avec une nouvelle image de serveur."
 }, true);
 launcherI18n.register("es-ES", "Español", {
   "Clear cache before launching": "Borrar caché antes de iniciar",
@@ -2491,7 +2500,16 @@ launcherI18n.register("es-ES", "Español", {
   "Fixed friends not being able to connect: the server now listens on every address when you host on LAN, Hamachi, Tailscale or another address (it only listened on this PC before).": "Corregido: los amigos no podían conectarse. El servidor ahora escucha en todas las direcciones cuando alojas por LAN, Hamachi, Tailscale u otra (antes solo escuchaba en este PC).",
   "The Server page checks the realm address, open ports and Windows Firewall, and can add the firewall rules with one permission prompt.": "La página Servidor comprueba la dirección del reino, los puertos abiertos y el Firewall de Windows, y puede añadir las reglas con una sola petición de permiso.",
   "Hosting with another VPN or a public IP: tick \"This is the address of my own server\" in Realmlist.": "Alojar con otra VPN o una IP pública: marca «Esta es la dirección de mi propio servidor» en Realmlist.",
-  "Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.": "Unirse a un amigo: Jugar te avisa cuando nada responde en su dirección, en vez de esperar en la pantalla de inicio de sesión."
+  "Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.": "Unirse a un amigo: Jugar te avisa cuando nada responde en su dirección, en vez de esperar en la pantalla de inicio de sesión.",
+  "The race list now comes from the latest release, so new races (such as Snagtooth) appear in the Bot races picker.": "La lista de razas ahora viene de la última versión, así que las razas nuevas (como Snagtooth) aparecen en el selector de razas de bots.",
+  "Races the server does not have yet are shown as \"needs a server update\" and cannot be ticked.": "Las razas que el servidor aún no tiene se muestran como «necesita una actualización del servidor» y no se pueden marcar.",
+  "Your own server now gets the Races server files (DBC, maps and database) from Apply modules and the Updates tab, without replacing its server program.": "Tu propio servidor ahora recibe los archivos de servidor de Razas (DBC, mapas y base de datos) desde Aplicar módulos y la pestaña Actualizaciones, sin reemplazar su programa de servidor.",
+  "Home: a notice and a button to download the CoA client while none is set.": "Inicio: un aviso y un botón para descargar el cliente de CoA mientras no haya ninguno configurado.",
+  "needs a server update": "necesita una actualización del servidor",
+  "For now you need your own CoA client. Fetch it from here:": "Por ahora necesitas tu propio cliente de CoA. Consíguelo aquí:",
+  "Download the CoA client": "Descargar el cliente de CoA",
+  "Starts the official installer download.": "Inicia la descarga del instalador oficial.",
+  "Your own server: Races updates its DBC files, maps and database. The server program itself only changes with a new server image.": "Tu propio servidor: Razas actualiza sus archivos DBC, mapas y base de datos. El programa del servidor solo cambia con una nueva imagen de servidor."
 }, true);
 launcherI18n.register("ru", "Русский", {
   "Clear cache before launching": "Очищать кэш перед запуском",
@@ -3738,7 +3756,16 @@ launcherI18n.register("ru", "Русский", {
   "Fixed friends not being able to connect: the server now listens on every address when you host on LAN, Hamachi, Tailscale or another address (it only listened on this PC before).": "Исправлено: друзья не могли подключиться. Теперь сервер слушает все адреса при хостинге по LAN, Hamachi, Tailscale и другим (раньше только этот ПК).",
   "The Server page checks the realm address, open ports and Windows Firewall, and can add the firewall rules with one permission prompt.": "Страница «Сервер» проверяет адрес мира, открытые порты и брандмауэр Windows и может добавить правила одним запросом разрешения.",
   "Hosting with another VPN or a public IP: tick \"This is the address of my own server\" in Realmlist.": "Хостинг через другую VPN или публичный IP: отметьте «Это адрес моего собственного сервера» в Realmlist.",
-  "Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.": "Подключение к другу: при запуске игры вы узнаете, что по его адресу никто не отвечает, вместо ожидания на экране входа."
+  "Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.": "Подключение к другу: при запуске игры вы узнаете, что по его адресу никто не отвечает, вместо ожидания на экране входа.",
+  "The race list now comes from the latest release, so new races (such as Snagtooth) appear in the Bot races picker.": "Список рас теперь берётся из последнего релиза, поэтому новые расы (например, Snagtooth) появляются в выборе рас ботов.",
+  "Races the server does not have yet are shown as \"needs a server update\" and cannot be ticked.": "Расы, которых ещё нет на сервере, помечены «нужно обновить сервер» и не отмечаются.",
+  "Your own server now gets the Races server files (DBC, maps and database) from Apply modules and the Updates tab, without replacing its server program.": "Ваш собственный сервер теперь получает серверные файлы Рас (DBC, карты и база данных) через «Применить модули» и вкладку обновлений, не заменяя сам сервер.",
+  "Home: a notice and a button to download the CoA client while none is set.": "Главная: уведомление и кнопка загрузки клиента CoA, пока клиент не выбран.",
+  "needs a server update": "нужно обновить сервер",
+  "For now you need your own CoA client. Fetch it from here:": "Пока вам нужен собственный клиент CoA. Скачайте его здесь:",
+  "Download the CoA client": "Скачать клиент CoA",
+  "Starts the official installer download.": "Запускает загрузку официального установщика.",
+  "Your own server: Races updates its DBC files, maps and database. The server program itself only changes with a new server image.": "Ваш собственный сервер: «Расы» обновляют DBC-файлы, карты и базу данных. Сама программа сервера меняется только с новым образом сервера."
 }, true);
 launcherI18n.register("zh-CN", "简体中文", {
   "Clear cache before launching": "启动前清除缓存",
@@ -4985,5 +5012,14 @@ launcherI18n.register("zh-CN", "简体中文", {
   "Fixed friends not being able to connect: the server now listens on every address when you host on LAN, Hamachi, Tailscale or another address (it only listened on this PC before).": "修复朋友无法连接的问题：通过局域网、Hamachi、Tailscale 或其他地址做主机时，服务器现在会监听所有地址（以前只监听本机）。",
   "The Server page checks the realm address, open ports and Windows Firewall, and can add the firewall rules with one permission prompt.": "“服务器”页面会检查服务器地址、开放端口和 Windows 防火墙，并可通过一次权限确认添加防火墙规则。",
   "Hosting with another VPN or a public IP: tick \"This is the address of my own server\" in Realmlist.": "使用其他 VPN 或公网 IP 做主机：在 Realmlist 中勾选“这是我自己服务器的地址”。",
-  "Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.": "加入朋友：如果其地址没有响应，开始游戏时会直接提示，而不是停在登录界面等待。"
+  "Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.": "加入朋友：如果其地址没有响应，开始游戏时会直接提示，而不是停在登录界面等待。",
+  "The race list now comes from the latest release, so new races (such as Snagtooth) appear in the Bot races picker.": "种族列表现在来自最新发布版本，因此新种族（如 Snagtooth）会出现在机器人种族选择中。",
+  "Races the server does not have yet are shown as \"needs a server update\" and cannot be ticked.": "服务器尚未包含的种族会显示“需要更新服务器”，且无法勾选。",
+  "Your own server now gets the Races server files (DBC, maps and database) from Apply modules and the Updates tab, without replacing its server program.": "您自己的服务器现在可通过“应用模块”和“更新”标签获得种族的服务器文件（DBC、地图和数据库），且不会替换服务器程序。",
+  "Home: a notice and a button to download the CoA client while none is set.": "主页：在尚未设置客户端时显示提示和下载 CoA 客户端的按钮。",
+  "needs a server update": "需要更新服务器",
+  "For now you need your own CoA client. Fetch it from here:": "目前您需要自己的 CoA 客户端。请从这里获取：",
+  "Download the CoA client": "下载 CoA 客户端",
+  "Starts the official installer download.": "开始下载官方安装程序。",
+  "Your own server: Races updates its DBC files, maps and database. The server program itself only changes with a new server image.": "您自己的服务器：种族模块会更新其 DBC 文件、地图和数据库。服务器程序本身只会随新的服务器镜像更改。"
 }, true);

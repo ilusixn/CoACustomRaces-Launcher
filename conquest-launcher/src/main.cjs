@@ -678,7 +678,7 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
   });
 
   // ---- CoA Custom Races: server, modules and realmlist ----
-  const coa = new CoaCustom({ fetchImpl: electronFetch, notify: status => sendStatus('coa:progress', status), serverRepository: /^[\w.-]+\/[\w.-]+$/.test(config.serverRepository || '') ? config.serverRepository : '' });
+  const coa = new CoaCustom({ fetchImpl: electronFetch, notify: status => sendStatus('coa:progress', status), serverRepository: /^[\w.-]+\/[\w.-]+$/.test(config.serverRepository || '') ? config.serverRepository : '', racesCache: path.join(app.getPath('userData'), 'races-cache.md') });
   const requireServer = async () => {
     if (!settings.serverPath || !(await fs.stat(path.join(settings.serverPath, 'Scripts/manage.py')).catch(() => null))) throw new Error('Create or locate your server first.');
     return settings.serverPath;
@@ -702,6 +702,8 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     }
     const created = await coa.createServer(result.filePaths[0]);
     await persist({ ...settings, serverPath: created.path, localMode: true, versions: { ...settings.versions, server: created.version } });
+    // The image carries the races of its own release; a newer races release (e.g. a new race) is applied once, here.
+    if (settings.modules?.races) { try { const sync = await coa.syncRacesServer(created.path); if (sync.applied) await persist({ ...settings, versions: { ...settings.versions, races: sync.tag } }); } catch { /* Apply modules or the Updates tab retries */ } }
     return created;
   });
   handle('coa:locate-server', async () => {
@@ -731,7 +733,7 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     return result;
   });
   // ---- updates, connected to each repository's latest GitHub release ----
-  handle('coa:updates', async () => ({ installed: settings.versions, latest: await coa.latestVersions(), modules: settings.modules, server: settings.serverPath, serverRepo: coa.sources.server, foreignServer: coa.foreignServer(settings.serverPath) }));
+  handle('coa:updates', async () => ({ installed: settings.versions, latest: await coa.latestVersions(), modules: settings.modules, server: settings.serverPath, serverRepo: coa.sources.server, foreignServer: coa.foreignServer(settings.serverPath), own: !!settings.serverPath && coa.isOwnServer(settings.serverPath) }));
   handle('coa:update-server', async () => {
     const result = await coa.updateServer(await requireServer(), settings.versions.server);
     await persist({ ...settings, versions: { ...settings.versions, server: result.version } });
@@ -862,7 +864,8 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
   handle('coa:set-bot-races', async allowed => {
     if (!Array.isArray(allowed) || !allowed.every(Number.isInteger)) throw new Error('Invalid race list.');
     const known = [...new Set((await coa.races()).flatMap(race => race.ids))];
-    return coa.setBotRaces(await requireServer(), allowed.filter(id => known.includes(id)), known);
+    const root = await requireServer();
+    return coa.setBotRaces(root, allowed.filter(id => known.includes(id)), known, await coa.serverRaceIds(root));
   });
   handle('coa:set-realm', async (mode, address, hostingChoice) => {
     if (!['local', 'lan', 'hamachi', 'tailscale', 'custom'].includes(mode)) throw new Error('Unknown realm mode.');
@@ -883,7 +886,7 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     return { realmlist: value, server, restart };
   });
   handle('coa:open', async key => {
-    const urls = { coffee: 'https://buymeacoffee.com/ilusixne', duff: 'https://github.com/Duff-SPP/ConquestOfAzerothCoreLauncher', races: 'https://github.com/ilusixn/CustomRacesCoa/releases/tag/coa-custom-2.0', devmenu: 'https://github.com/ilusixn/ilusixn-dev-menu/releases/latest', squid: 'https://github.com/Zyth45/squidbots-addon', hamachi: 'https://vpn.net/' };
+    const urls = { coffee: 'https://buymeacoffee.com/ilusixne', duff: 'https://github.com/Duff-SPP/ConquestOfAzerothCoreLauncher', races: 'https://github.com/ilusixn/CustomRacesCoa/releases/tag/coa-custom-2.0', devmenu: 'https://github.com/ilusixn/ilusixn-dev-menu/releases/latest', squid: 'https://github.com/Zyth45/squidbots-addon', hamachi: 'https://vpn.net/', client: 'https://conquestofazerothcore.to/download/windows' };
     if (!Object.hasOwn(urls, key)) throw new Error('Unknown link.');
     await shell.openExternal(urls[key]);
   });

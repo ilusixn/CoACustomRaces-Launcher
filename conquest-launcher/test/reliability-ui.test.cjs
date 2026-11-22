@@ -29,3 +29,12 @@ test('empty addon results and errors do not trigger a render/rescan loop',async(
  ctx.state.client.path='B';await ctx.loadAddons();assert.equal(calls,3,'new client rescans');
  }
 });
+
+test('home shows the CoA client download notice only without a client, through the link allowlist', () => {
+  const fs = require('node:fs'); const assert = require('node:assert/strict');
+  const app = fs.readFileSync(require.resolve('../public/app.js'), 'utf8');
+  const main = fs.readFileSync(require.resolve('../src/main.cjs'), 'utf8');
+  assert.match(app, /\$\{installed \? '' : lh`<p class="hd-patches-hint">\$\{t\('For now you need your own CoA client\. Fetch it from here:'\)\}/);
+  assert.match(app, /data-action="coa-link" data-link="client"/);
+  assert.match(main, /client: 'https:\/\/conquestofazerothcore\.to\/download\/windows'/);
+});

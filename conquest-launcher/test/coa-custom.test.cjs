@@ -30,7 +30,7 @@ test('bot races keep at least one race and always exclude Test Race', async t =>
   await fs.writeFile(path.join(dir, 'playerbots.conf'), 'AiPlayerbot.ExcludedBotRaces = "65"\nAiPlayerbot.CrashingBotRaces = "72,77"\n');
   await fs.writeFile(path.join(dir, 'coa_custom_races.conf'), '');
   const coa = new CoaCustom({ fetchImpl: null, notify: () => {} });
-  assert.deepEqual(await coa.botRaces(root), { excluded: [65], crashing: [72, 77] });
+  assert.deepEqual(await coa.botRaces(root), { serverIds: null, excluded: [65], crashing: [72, 77] });
   await coa.setBotRaces(root, [1, 13], [1, 2, 13, 14]);
   assert.deepEqual((await coa.botRaces(root)).excluded, [2, 14, 65]);
   assert.match(await fs.readFile(path.join(dir, 'coa_custom_races.conf'), 'utf8'), /CoACustomRaces\.BotsEnable = 1/);
@@ -136,4 +136,57 @@ test('SquidBots options are listed with their comments and only known keys can b
   assert.equal(await fs.readFile(path.join(dir, 'playerbots.conf'), 'utf8'), '# How many bots\n# at most\nAiPlayerbot.MaxRandomBots = 200\n\nAiPlayerbot.RandomBotAccountPrefix = "bots"\n');
   await assert.rejects(coa.setBotOption(root, 'worldserver.Evil', 1), /Unknown SquidBots option/);
   await assert.rejects(coa.setBotOption(root, 'AiPlayerbot.MaxRandomBots', '1\nX=2'), /not allowed/);
+});
+
+const racesMd = (extra = '') => `| Id | Race | Side | Credit | Notes |\n|---|---|---|---|---|\n| 105 | Gilgoblin | Horde | ilusixn | |\n${extra}`;
+const releaseFetch = (assetText, headText) => async url => {
+  if (url.includes('api.github.com')) return { ok: true, json: async () => ({ tag_name: 'v2', assets: [{ name: 'RACES.md', browser_download_url: 'https://asset/RACES.md' }] }) };
+  if (url === 'https://asset/RACES.md') return { ok: assetText != null, text: async () => assetText };
+  return { ok: headText != null, text: async () => headText };
+};
+
+test('race list prefers the latest release asset, then the repository file, then the cached copy', async t => {
+  const cache = path.join(await fs.mkdtemp(path.join(os.tmpdir(), 'coa-races-')), 'cache.md');
+  t.after(() => fs.rm(path.dirname(cache), { recursive: true, force: true }));
+  const snag = racesMd('| 94 | Snagtooth | Alliance | ilusixn | |\n');
+  let coa = new CoaCustom({ fetchImpl: releaseFetch(snag, racesMd()), notify: () => {}, racesCache: cache });
+  assert.ok((await coa.races()).some(r => r.ids.includes(94)));
+  coa = new CoaCustom({ fetchImpl: releaseFetch(null, null), notify: () => {}, racesCache: cache });
+  assert.ok((await coa.races()).some(r => r.ids.includes(94)), 'offline: last cached copy');
+  coa = new CoaCustom({ fetchImpl: releaseFetch(null, racesMd()), notify: () => {}, racesCache: cache });
+  assert.ok(!(await coa.races()).some(r => r.ids.includes(94)), 'repository file when the asset is missing');
+});
+
+test('server race ids come from ChrRaces.dbc and unknown races cannot be allowed for bots', async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'coa-dbc-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const dbc = Buffer.alloc(20 + 16);
+  dbc.write('WDBC', 0, 'latin1'); dbc.writeUInt32LE(2, 4); dbc.writeUInt32LE(2, 8); dbc.writeUInt32LE(8, 12);
+  dbc.writeUInt32LE(1, 20); dbc.writeUInt32LE(94, 28);
+  await fs.mkdir(path.join(root, 'Data/dbc'), { recursive: true });
+  await fs.writeFile(path.join(root, 'Data/dbc/ChrRaces.dbc'), dbc);
+  const dir = path.join(root, 'Core/configs/modules'); await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, 'playerbots.conf'), 'AiPlayerbot.ExcludedBotRaces = ""\n'); await fs.writeFile(path.join(dir, 'coa_custom_races.conf'), '');
+  const coa = new CoaCustom({ fetchImpl: null, notify: () => {} });
+  const ids = await coa.serverRaceIds(root);
+  assert.deepEqual([...ids], [1, 94]);
+  await coa.setBotRaces(root, [1, 94, 105], [1, 94, 105], ids);
+  assert.deepEqual((await coa.botRaces(root)).excluded, [105, 65]);
+});
+
+test('own servers get the races server half once per tag and never a replacement core', async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'coa-own-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  await fs.mkdir(path.join(root, 'Settings'), { recursive: true });
+  await fs.writeFile(path.join(root, 'Settings/own-server.json'), '{}');
+  const coa = new CoaCustom({ fetchImpl: null, notify: () => {} });
+  assert.equal(coa.isOwnServer(root), true);
+  const calls = [];
+  coa.latestRelease = async () => ({ tag_name: 'v2', assets: [] });
+  coa.updateRacesServer = async (r, rel) => { calls.push(rel.tag_name); await fs.writeFile(coa.racesLedgerFile(r), JSON.stringify({ tag: rel.tag_name })); return rel.tag_name; };
+  assert.deepEqual(await coa.syncRacesServer(root), { tag: 'v2', applied: true });
+  assert.deepEqual(await coa.syncRacesServer(root), { tag: 'v2', applied: false });
+  assert.equal(calls.length, 1);
+  const src = require('node:fs').readFileSync(require.resolve('../src/coa-custom.cjs'), 'utf8');
+  assert.match(src, /if \(!own\) await this\.updateRacesCore/);
 });

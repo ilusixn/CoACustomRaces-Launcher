@@ -1243,5 +1243,14 @@
   "Fixed friends not being able to connect: the server now listens on every address when you host on LAN, Hamachi, Tailscale or another address (it only listened on this PC before).": "Исправлено: друзья не могли подключиться. Теперь сервер слушает все адреса при хостинге по LAN, Hamachi, Tailscale и другим (раньше только этот ПК).",
   "The Server page checks the realm address, open ports and Windows Firewall, and can add the firewall rules with one permission prompt.": "Страница «Сервер» проверяет адрес мира, открытые порты и брандмауэр Windows и может добавить правила одним запросом разрешения.",
   "Hosting with another VPN or a public IP: tick \"This is the address of my own server\" in Realmlist.": "Хостинг через другую VPN или публичный IP: отметьте «Это адрес моего собственного сервера» в Realmlist.",
-  "Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.": "Подключение к другу: при запуске игры вы узнаете, что по его адресу никто не отвечает, вместо ожидания на экране входа."
+  "Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.": "Подключение к другу: при запуске игры вы узнаете, что по его адресу никто не отвечает, вместо ожидания на экране входа.",
+  "The race list now comes from the latest release, so new races (such as Snagtooth) appear in the Bot races picker.": "Список рас теперь берётся из последнего релиза, поэтому новые расы (например, Snagtooth) появляются в выборе рас ботов.",
+  "Races the server does not have yet are shown as \"needs a server update\" and cannot be ticked.": "Расы, которых ещё нет на сервере, помечены «нужно обновить сервер» и не отмечаются.",
+  "Your own server now gets the Races server files (DBC, maps and database) from Apply modules and the Updates tab, without replacing its server program.": "Ваш собственный сервер теперь получает серверные файлы Рас (DBC, карты и база данных) через «Применить модули» и вкладку обновлений, не заменяя сам сервер.",
+  "Home: a notice and a button to download the CoA client while none is set.": "Главная: уведомление и кнопка загрузки клиента CoA, пока клиент не выбран.",
+  "needs a server update": "нужно обновить сервер",
+  "For now you need your own CoA client. Fetch it from here:": "Пока вам нужен собственный клиент CoA. Скачайте его здесь:",
+  "Download the CoA client": "Скачать клиент CoA",
+  "Starts the official installer download.": "Запускает загрузку официального установщика.",
+  "Your own server: Races updates its DBC files, maps and database. The server program itself only changes with a new server image.": "Ваш собственный сервер: «Расы» обновляют DBC-файлы, карты и базу данных. Сама программа сервера меняется только с новым образом сервера."
 }

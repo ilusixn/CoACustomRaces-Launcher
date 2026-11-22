@@ -1243,5 +1243,14 @@
   "Fixed friends not being able to connect: the server now listens on every address when you host on LAN, Hamachi, Tailscale or another address (it only listened on this PC before).": "Corregido: los amigos no podían conectarse. El servidor ahora escucha en todas las direcciones cuando alojas por LAN, Hamachi, Tailscale u otra (antes solo escuchaba en este PC).",
   "The Server page checks the realm address, open ports and Windows Firewall, and can add the firewall rules with one permission prompt.": "La página Servidor comprueba la dirección del reino, los puertos abiertos y el Firewall de Windows, y puede añadir las reglas con una sola petición de permiso.",
   "Hosting with another VPN or a public IP: tick \"This is the address of my own server\" in Realmlist.": "Alojar con otra VPN o una IP pública: marca «Esta es la dirección de mi propio servidor» en Realmlist.",
-  "Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.": "Unirse a un amigo: Jugar te avisa cuando nada responde en su dirección, en vez de esperar en la pantalla de inicio de sesión."
+  "Joining a friend: Play tells you when nothing answers at their address instead of waiting on the login screen.": "Unirse a un amigo: Jugar te avisa cuando nada responde en su dirección, en vez de esperar en la pantalla de inicio de sesión.",
+  "The race list now comes from the latest release, so new races (such as Snagtooth) appear in the Bot races picker.": "La lista de razas ahora viene de la última versión, así que las razas nuevas (como Snagtooth) aparecen en el selector de razas de bots.",
+  "Races the server does not have yet are shown as \"needs a server update\" and cannot be ticked.": "Las razas que el servidor aún no tiene se muestran como «necesita una actualización del servidor» y no se pueden marcar.",
+  "Your own server now gets the Races server files (DBC, maps and database) from Apply modules and the Updates tab, without replacing its server program.": "Tu propio servidor ahora recibe los archivos de servidor de Razas (DBC, mapas y base de datos) desde Aplicar módulos y la pestaña Actualizaciones, sin reemplazar su programa de servidor.",
+  "Home: a notice and a button to download the CoA client while none is set.": "Inicio: un aviso y un botón para descargar el cliente de CoA mientras no haya ninguno configurado.",
+  "needs a server update": "necesita una actualización del servidor",
+  "For now you need your own CoA client. Fetch it from here:": "Por ahora necesitas tu propio cliente de CoA. Consíguelo aquí:",
+  "Download the CoA client": "Descargar el cliente de CoA",
+  "Starts the official installer download.": "Inicia la descarga del instalador oficial.",
+  "Your own server: Races updates its DBC files, maps and database. The server program itself only changes with a new server image.": "Tu propio servidor: Razas actualiza sus archivos DBC, mapas y base de datos. El programa del servidor solo cambia con una nueva imagen de servidor."
 }

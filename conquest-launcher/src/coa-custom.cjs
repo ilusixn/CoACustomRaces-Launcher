@@ -71,7 +71,7 @@ function hostsHere(mode, address, net, hosting = false) {
 
 class CoaCustom {
   // serverRepository: GitHub repo whose releases hold the server package (default: the built-in source above).
-  constructor({ fetchImpl, notify, serverRepository = '' }) { this.fetch = fetchImpl; this.notify = notify; this.busy = false; this.sources = { ...SOURCES, ...(serverRepository ? { server: serverRepository } : {}) }; }
+  constructor({ fetchImpl, notify, serverRepository = '', racesCache = '' }) { this.fetch = fetchImpl; this.notify = notify; this.racesCache = racesCache; this.busy = false; this.sources = { ...SOURCES, ...(serverRepository ? { server: serverRepository } : {}) }; }
 
   emit(phase, message, extra = {}) { this.notify({ phase, message, ...extra }); }
 
@@ -353,8 +353,22 @@ class CoaCustom {
   // Server half of a Custom Races release (CoA-Custom-V*-Server.zip): server DBCs, the module config and the world SQL
   // (NPC placement, race starts, racials...). Same steps as the release's install.py, which re-runs every file on each
   // update. shortcut: worldserver.exe from that zip is NOT used (it is built for the CoA-Bots repack, not this server's core).
-  async updateRacesServer(root) {
-    const release = await this.latestRelease(SOURCES.races);
+  racesLedgerFile(root) { return path.join(root, 'Settings/races-server.json'); }
+  async racesLedger(root) { try { return JSON.parse(await fsp.readFile(this.racesLedgerFile(root), 'utf8')); } catch { return {}; } }
+  isOwnServer(root) { return fs.existsSync(path.join(root, 'Settings/own-server.json')); }
+
+  // Applies the server half of the latest races release unless the ledger says this server already has that tag.
+  async syncRacesServer(root, { force = false } = {}) {
+    return this.exclusive(async () => {
+      const release = await this.latestRelease(SOURCES.races);
+      if (!force && (await this.racesLedger(root)).tag === release.tag_name) return { tag: release.tag_name, applied: false };
+      return { tag: await this.updateRacesServer(root, release), applied: true };
+    });
+  }
+
+  async updateRacesServer(root, known = null) {
+    const own = this.isOwnServer(root); // an own server's core, DLLs and module config come only from its own.N release
+    const release = known || await this.latestRelease(SOURCES.races);
     const asset = release.assets.find(a => /^CoA-Custom-V[\d.]+-Server\.zip$/.test(a.name));
     if (!asset) throw new Error(`${release.tag_name} has no server file (CoA-Custom-V…-Server.zip).`);
     const work = path.join(this.tmpDir(), 'races-server');
@@ -379,9 +393,9 @@ class CoaCustom {
     await copyAll(path.join(files, 'dbc_clientset'), path.join(root, 'Data/dbc_clientset'), n => /\.dbc$/i.test(n));
     for (const sub of ['maps', 'vmaps', 'mmaps']) await copyAll(path.join(files, 'server_data', sub), path.join(root, 'Data', sub)); // V2.0.1: map 907 (Fading Island)
     const conf = path.join(root, 'Core/configs/modules');
-    await copyAll(path.join(files, 'modules'), conf, n => n === 'coa_custom_races.conf.dist');
-    if (!fs.existsSync(path.join(conf, 'coa_custom_races.conf'))) await fsp.copyFile(path.join(conf, 'coa_custom_races.conf.dist'), path.join(conf, 'coa_custom_races.conf')).catch(() => {});
-    await this.updateRacesCore(root, release);
+    if (!own) await copyAll(path.join(files, 'modules'), conf, n => n === 'coa_custom_races.conf.dist');
+    if (!fs.existsSync(path.join(conf, 'coa_custom_races.conf')) && fs.existsSync(path.join(conf, 'coa_custom_races.conf.dist'))) await fsp.copyFile(path.join(conf, 'coa_custom_races.conf.dist'), path.join(conf, 'coa_custom_races.conf')).catch(() => {});
+    if (!own) await this.updateRacesCore(root, release);
     await this.withDatabase(root, async () => {
       for (const [index, name] of sqls.entries()) {
         this.emit('server', `Applying Custom Races database updates… ${index + 1}/${sqls.length}`);
@@ -390,6 +404,8 @@ class CoaCustom {
       }
     });
     await fsp.rm(work, { recursive: true, force: true });
+    await fsp.mkdir(path.join(root, 'Settings'), { recursive: true });
+    await fsp.writeFile(this.racesLedgerFile(root), JSON.stringify({ tag: release.tag_name, appliedAt: new Date().toISOString() }, null, 2));
     return release.tag_name;
   }
 
@@ -412,11 +428,16 @@ class CoaCustom {
       if (want('races') && !have.races && clientPath) versions.races = await this.installRaces(clientPath);
       const notes = [];
       // The server half carries the NPCs, ferries and race data, so races without it show nothing in game.
-      // An own-server package already carries the races' server half (DBC, SQL, core); only the client files are separate.
-      const ownServer = !!serverPath && fs.existsSync(path.join(serverPath, 'Settings/own-server.json'));
-      if (want('races') && !have.races && !ownServer) {
-        if (!serverPath) notes.push('No server is selected, so only the client was installed. Select your server (Locate server), then update again.');
-        else try { versions.races = await this.updateRacesServer(serverPath); } catch (error) { if (only) throw error; notes.push(`Server part skipped: ${error.message}`); }
+      // Own servers get the same server half (DBC, maps, SQL) but never a replacement core: that comes from their own.N release.
+      // Apply modules runs it for a new install or when the release tag is newer than the one recorded for this server.
+      if (want('races')) {
+        if (!serverPath) { if (!have.races) notes.push('No server is selected, so only the client was installed. Select your server (Locate server), then update again.'); }
+        else {
+          try {
+            const stale = only === 'races' || !have.races || (await this.racesLedger(serverPath)).tag !== (await this.latestRelease(SOURCES.races)).tag_name;
+            if (stale) versions.races = await this.updateRacesServer(serverPath);
+          } catch (error) { if (only) throw error; notes.push(`Server part skipped: ${error.message}`); }
+        }
       }
       if (want('devMenu') && !have.devMenu) notes.push('Dev Menu: the addon is installed. Its server part needs a worldserver built with mod-ilusixn-devmenu.');
       if (serverPath && !only) notes.push('Restart the server to apply the switches.');
@@ -871,10 +892,35 @@ class CoaCustom {
 
   // ---------- races and bots ----------
 
+  // RACES.md of the LATEST RELEASE (the repository's default branch can lag behind a release), then the repository file,
+  // then the last copy that worked, so the list survives being offline.
   async races() {
-    const response = await this.fetch(RACES_FILE);
-    if (!response.ok) throw new Error(`The race list is unavailable (${response.status}).`);
-    return [...STANDARD_RACES, ...parseRaces(await response.text())];
+    const sources = [
+      async () => { const asset = (await this.latestRelease(SOURCES.races)).assets.find(a => a.name === 'RACES.md'); if (!asset) return ''; const r = await this.fetch(asset.browser_download_url); return r.ok ? r.text() : ''; },
+      async () => { const r = await this.fetch(RACES_FILE); return r.ok ? r.text() : ''; },
+      async () => this.racesCache ? fsp.readFile(this.racesCache, 'utf8').catch(() => '') : ''
+    ];
+    for (const [index, source] of sources.entries()) {
+      let text = ''; try { text = await source(); } catch { /* try the next source */ }
+      const rows = parseRaces(text);
+      if (!rows.length) continue;
+      if (index < 2 && this.racesCache) { await fsp.mkdir(path.dirname(this.racesCache), { recursive: true }).catch(() => {}); await fsp.writeFile(this.racesCache, text).catch(() => {}); }
+      return [...STANDARD_RACES, ...rows];
+    }
+    throw new Error('The race list is unavailable. Check your internet connection.');
+  }
+
+  // Race ids the SERVER knows (ChrRaces.dbc: the core reads Data/dbc_races first when custom races are on). null = cannot tell.
+  async serverRaceIds(root) {
+    for (const rel of ['Data/dbc_races/ChrRaces.dbc', 'Data/dbc/ChrRaces.dbc']) {
+      const buf = await fsp.readFile(path.join(root, rel)).catch(() => null);
+      if (!buf || buf.length < 20 || buf.toString('latin1', 0, 4) !== 'WDBC') continue;
+      const count = buf.readUInt32LE(4); const size = buf.readUInt32LE(12);
+      if (!size || 20 + count * size > buf.length) continue;
+      const ids = new Set(); for (let i = 0; i < count; i++) ids.add(buf.readUInt32LE(20 + i * size));
+      return ids;
+    }
+    return null;
   }
 
   async readConf(root, file, key) {
@@ -886,12 +932,14 @@ class CoaCustom {
 
   async botRaces(root) {
     const ids = value => (value || '').split(/[,\s]+/).filter(Boolean).map(Number).filter(Number.isInteger);
-    return { excluded: ids(await this.readConf(root, 'playerbots.conf', 'AiPlayerbot.ExcludedBotRaces')), crashing: ids(await this.readConf(root, 'playerbots.conf', 'AiPlayerbot.CrashingBotRaces')).filter(id => !SABERON_IDS.includes(id)) };
+    const onServer = await this.serverRaceIds(root);
+    return { serverIds: onServer ? [...onServer].sort((x, y) => x - y) : null, excluded: ids(await this.readConf(root, 'playerbots.conf', 'AiPlayerbot.ExcludedBotRaces')), crashing: ids(await this.readConf(root, 'playerbots.conf', 'AiPlayerbot.CrashingBotRaces')).filter(id => !SABERON_IDS.includes(id)) };
   }
 
   // allowed = race ids bots may spawn as; every other known race is excluded.
-  async setBotRaces(root, allowed, known) {
-    const allow = new Set(allowed);
+  async setBotRaces(root, allowed, known, serverIds = null) {
+    // A race the server's ChrRaces.dbc does not have would make bots fail to log in: never allow it, whatever was ticked.
+    const allow = new Set(allowed.filter(id => !serverIds || serverIds.has(id)));
     if (!allow.size) throw new Error('Pick at least one race for the bots.');
     // Test Race (65) is not a real race and is never offered to bots.
     const excluded = [...new Set([...known.filter(id => !allow.has(id)), 65])];
