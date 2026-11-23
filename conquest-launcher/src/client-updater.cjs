@@ -56,7 +56,7 @@ class ClientUpdater {
     if (!response.ok) {
       const error = new Error(response.status === 426 ? 'Update your launcher to the latest version to download, install or repair the client.' : response.status === 404 ? 'No client release has been published yet.' : `Could not check client updates (HTTP ${response.status}).`);
       error.serviceUnavailable = response.status === 429 || response.status >= 500;
-      error.noRelease = response.status === 404;
+      error.noRelease = response.status === 404 || response.status === 410;
       throw error;
     }
     const chunks = []; let bytes = 0;
