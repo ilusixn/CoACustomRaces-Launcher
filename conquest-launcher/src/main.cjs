@@ -546,7 +546,9 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     }
     await mutateClient(async () => {
       await clearClientCache(info.path);
-      await configureRealm(info.path, settings.realmlist);
+      // The host plays through 127.0.0.1: many routers cannot loop back to their own public IP (no NAT
+      // hairpinning). Friends still get the hosting address from the server's realm list.
+      await configureRealm(info.path, settings.serverPath && hosting() ? '127.0.0.1' : settings.realmlist);
     });
 
     const credentialVersion = settings.autoLoginGame ? gameCredentials.version : 0;
@@ -763,7 +765,7 @@ session.defaultSession.webRequest.onBeforeSendHeaders(
     const info = await clientInfo();
     let extra = [];
     if (settings.serverPath) { try { extra = (await networkReport()).items; } catch { /* the rest of the report still helps */ } }
-    return coa.troubleshoot({ serverPath: settings.serverPath, clientPath: info.path || '', realmlist: settings.realmlist, realmMode: settings.realmMode, modules: settings.modules, versions: settings.versions, serverAddress: settings.serverPath ? realmAddress() : settings.realmlist, extra });
+    return coa.troubleshoot({ serverPath: settings.serverPath, clientPath: info.path || '', realmlist: settings.serverPath && hosting() ? '127.0.0.1' : settings.realmlist, realmMode: settings.realmMode, modules: settings.modules, versions: settings.versions, serverAddress: settings.serverPath ? realmAddress() : settings.realmlist, extra });
   });
   // ---- accounts and deleting ----
   handle('coa:accounts', async () => coa.listAccounts(await requireServer()));
